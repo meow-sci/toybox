@@ -1,0 +1,26 @@
+{
+  "name": "@toybox/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc --noEmit",
+    "test:browser": "vitest run --config vitest.browser.config.ts"
+  },
+  "dependencies": {
+    "@noble/hashes": "2.2.0",
+    "fflate": "0.8.3",
+    "smol-toml": "1.7.0"
+  },
+  "devDependencies": {
+    "@vitest/browser": "4.1.9",
+    "@vitest/browser-playwright": "4.1.9",
+    "playwright": "1.61.1",
+    "vitest": "4.1.9"
+  }
+}
