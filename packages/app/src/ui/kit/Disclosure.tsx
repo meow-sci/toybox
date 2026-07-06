@@ -3,6 +3,7 @@ import {
   Button,
   Disclosure as AriaDisclosure,
   DisclosureGroup,
+  DisclosureGroupStateContext,
   DisclosurePanel as AriaDisclosurePanel,
   type ButtonProps,
   type DisclosurePanelProps,
@@ -10,8 +11,26 @@ import {
 } from 'react-aria-components'
 import { composeTw, cn } from './index'
 
-export function Disclosure({ className, ...props }: DisclosureProps) {
-  return <AriaDisclosure {...props} className={composeTw('group/disclosure', className)} />
+export interface DisclosureKitProps extends DisclosureProps {
+  /**
+   * Detach this disclosure from any surrounding DisclosureGroup so it keeps
+   * its own expanded state. Use for disclosures nested INSIDE a grouped
+   * disclosure's panel (e.g. the file-manifest section inside a release) —
+   * without this they would share the group's expandedKeys.
+   */
+  standalone?: boolean
+}
+
+export function Disclosure({ standalone, className, ...props }: DisclosureKitProps) {
+  const disclosure = (
+    <AriaDisclosure {...props} className={composeTw('group/disclosure', className)} />
+  )
+  if (!standalone) return disclosure
+  return (
+    <DisclosureGroupStateContext.Provider value={null}>
+      {disclosure}
+    </DisclosureGroupStateContext.Provider>
+  )
 }
 
 /**

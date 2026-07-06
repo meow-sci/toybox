@@ -21,6 +21,7 @@ import {
   modIndexFolder,
   resolve,
   searchMods,
+  sortVersionsDescending,
   type ApplyEvent,
   type ArtifactManifest,
   type CartItem,
@@ -250,6 +251,17 @@ export async function refreshIndex(): Promise<void> {
 /** Platform-eligible releases, newest first — pure; works in both modes. */
 export function releasesFor(mod: CatalogMod, platform: Platform): CatalogRelease[] {
   return eligibleReleases(mod, platform)
+}
+
+/**
+ * ALL releases, newest first, with NO platform filter — for display
+ * surfaces (the detail page shows every version and marks per-platform
+ * availability instead of hiding releases the current OS can't install).
+ */
+export function sortedReleases(mod: CatalogMod): CatalogRelease[] {
+  const order = sortVersionsDescending(mod.releases.map((r) => r.version))
+  const byVersion = new Map(mod.releases.map((r) => [r.version, r] as const))
+  return order.map((v) => byVersion.get(v)!)
 }
 
 export function artifactRef(release: CatalogRelease, platform: Platform): CatalogArtifact | null {

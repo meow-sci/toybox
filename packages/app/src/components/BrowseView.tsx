@@ -5,13 +5,12 @@ import {
   $cartRemove,
   $index,
   $installed,
-  $platform,
   $query,
   $selectedModId,
   inCart,
   installedById,
-  releasesFor,
   $results,
+  sortedReleases,
   updateAvailable,
 } from '../state/appStore.ts'
 import { Badge, SearchField, Tag, card } from '../ui/kit'
@@ -21,7 +20,6 @@ export function BrowseView() {
   const query = useStore($query)
   const results = useStore($results)
   const installed = useStore($installed)
-  const platform = useStore($platform)
   const cartInstall = useStore($cartInstall)
   const cartRemove = useStore($cartRemove)
 
@@ -46,7 +44,7 @@ export function BrowseView() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(320px,1fr))]">
             {results.map((r) => {
               const installedMod = installedById(installed, r.item.id)
-              const latest = releasesFor(r.item, platform)[0]
+              const latest = sortedReleases(r.item)[0]
               const update = installedMod ? updateAvailable(index, installedMod) : null
               const carted = inCart(cartInstall, cartRemove, r.item.id)
               return (
