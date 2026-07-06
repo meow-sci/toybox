@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ALL_PLATFORMS } from '@toybox/core'
   import { app } from '../lib/toybox.svelte.ts'
   import { formatBytes } from '../lib/format.ts'
 
@@ -18,10 +19,15 @@
     <button class="small" onclick={onclose}>✕</button>
   </div>
 
-  {#if app.cartSize === 0 && !app.applyDone}
+  {#if app.cartSize === 0 && !app.applyDone && !app.bundleDone}
     <p class="muted">
-      Empty. Stage installs, upgrades, and removals here, review the full plan, then apply them as
-      one transaction.
+      {#if app.mode === 'catalog'}
+        Empty. Stage mods here, review the resolved selection, then download everything as one
+        verified .zip.
+      {:else}
+        Empty. Stage installs, upgrades, and removals here, review the full plan, then apply them
+        as one transaction.
+      {/if}
     </p>
   {:else}
     <ul class="items">
@@ -42,10 +48,87 @@
       {/each}
     </ul>
 
-    {#if !app.planned && !app.planFailure && app.cartSize > 0}
+    {#if app.mode === 'catalog' && app.cartInstall.length > 0}
+      <div class="platform-row">
+        <label for="bundle-platform">Bundle for</label>
+        <select
+          id="bundle-platform"
+          value={app.platform}
+          onchange={(e) => app.setPlatform(e.currentTarget.value as (typeof ALL_PLATFORMS)[number])}
+        >
+          {#each ALL_PLATFORMS as p (p)}
+            <option value={p}>{p}</option>
+          {/each}
+        </select>
+      </div>
+    {/if}
+
+    {#if app.mode === 'catalog'}
+      {#if !app.catalogPlan && !app.planFailure && app.cartInstall.length > 0}
+        <button class="primary" onclick={() => app.buildCatalogPlan()}>Review selection</button>
+      {/if}
+    {:else if !app.planned && !app.planFailure && app.cartSize > 0}
       <button class="primary" disabled={app.planning} onclick={() => app.buildPlan()}>
         {app.planning ? 'Resolving…' : 'Review plan'}
       </button>
+    {/if}
+
+    {#if app.mode === 'catalog' && app.catalogPlan}
+      <h4>Bundle contents</h4>
+      <ul class="plan">
+        {#each Object.values(app.catalogPlan.target) as target (target.id)}
+          <li>
+            <span class="badge info">include</span>
+            {target.id}
+            {target.version}
+            {#if target.autoInstalled}
+              <span class="muted">(required by your selection)</span>
+            {/if}
+          </li>
+        {/each}
+      </ul>
+      {#each app.catalogPlan.warnings as w (w.message)}
+        <p class="warn-line">⚠ {w.message}</p>
+      {/each}
+      <p class="muted">Download: {formatBytes(app.catalogDownloadBytes())} ({app.platform})</p>
+
+      {#if app.bundling}
+        <div class="progress">
+          <p>{app.applyPhase ?? 'Working…'}</p>
+          {#if app.download}
+            <progress
+              max={app.download.total ?? undefined}
+              value={app.download.total ? app.download.received : undefined}
+            ></progress>
+            <span class="muted">
+              {formatBytes(app.download.received)}{app.download.total
+                ? ` / ${formatBytes(app.download.total)}`
+                : ''}
+            </span>
+          {:else if app.fileProgress}
+            <span class="muted mono">{app.fileProgress.path}</span>
+          {/if}
+        </div>
+      {:else}
+        <button class="primary" onclick={() => app.downloadBundle()}>
+          Download mods (.zip)
+        </button>
+        <p class="muted small-hint">
+          This browser has no File System Access API, so toybox cannot install directly. The zip
+          is checksum-verified end to end; extract it into
+          <code>Documents\My Games\Kitten Space Agency\mods\</code> and you have exactly what a
+          managed install would have written.
+        </p>
+      {/if}
+    {/if}
+
+    {#if app.bundleDone}
+      <p class="done">
+        ✓ Saved <code>{app.bundleDone.filename}</code> ({app.bundleDone.contents
+          .map((c) => `${c.id} ${c.version}`)
+          .join(', ')}). Extract it into
+        <code>Documents\My Games\Kitten Space Agency\mods\</code>.
+      </p>
     {/if}
 
     {#if app.planFailure}
@@ -244,6 +327,16 @@
     gap: 8px;
     align-items: center;
     flex-wrap: wrap;
+  }
+  .platform-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin: 6px 0 10px;
+  }
+  .small-hint {
+    font-size: 12px;
+    margin-top: 8px;
   }
   .filepick {
     display: inline-flex;

@@ -29,7 +29,12 @@ CORS/download strategy, and the community-governance model of the sibling
 - **Enable/disable** mods via the game's own `manifest.toml` (grant the
   `Kitten Space Agency` folder rather than just `mods/`).
 
-Requires a Chromium-based browser (File System Access API).
+Works in any modern browser. Direct install (and everything stateful —
+verify, adopt, enable/disable) needs the File System Access API
+(Chromium-based browsers); everywhere else toybox runs in **browse mode**:
+full catalog, search, readmes, and dependency resolution, with the final
+install replaced by a checksum-verified **.zip bundle download** of the
+resolved selection — extract it into your `mods/` folder.
 
 ## Repo layout
 

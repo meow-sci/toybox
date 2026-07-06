@@ -7,7 +7,7 @@
 
   const mod = $derived(app.modById(modId))
   const installed = $derived(app.installedById(modId))
-  const releases = $derived(mod && app.engine ? app.engine.eligibleReleases(mod) : [])
+  const releases = $derived(mod ? app.releasesFor(mod) : [])
 </script>
 
 <div
@@ -44,7 +44,7 @@
       <table class="releases">
         <tbody>
           {#each releases as rel (rel.version)}
-            {@const artifact = app.engine?.artifactFor(rel)}
+            {@const artifact = app.artifactRef(rel)}
             <tr>
               <td><strong>{rel.version}</strong></td>
               <td class="muted">{formatDate(rel.publishedAt)}</td>

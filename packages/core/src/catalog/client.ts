@@ -22,7 +22,9 @@ export class IndexClient {
 
   constructor(opts: IndexClientOptions = {}) {
     this.indexUrl = opts.indexUrl ?? DEFAULT_INDEX_URL
-    this.fetchFn = opts.fetchFn ?? fetch
+    // Wrapped: invoking native fetch as a method of this object would
+    // throw "Illegal invocation" in browsers.
+    this.fetchFn = opts.fetchFn ?? ((input, init) => fetch(input, init))
   }
 
   async fetchIndex(): Promise<ToyboxIndex> {

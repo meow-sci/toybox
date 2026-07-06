@@ -46,6 +46,7 @@ import {
 } from './install/transaction.ts'
 import type { ManifestEntry } from './ksa/manifest.ts'
 import { parseManifest, serializeManifest, setEnabled, syncManifest } from './ksa/manifest.ts'
+import { artifactForPlatform, eligibleReleases, searchMods } from './catalog/select.ts'
 import { resolve, type ResolveResult, type ResolutionChange } from './resolve/resolver.ts'
 import {
   adoptFolder,
@@ -56,10 +57,9 @@ import {
   type ScanResult,
   type VerifyResult,
 } from './scan/scan.ts'
-import { fuzzySearch, type SearchResult } from './search/fuzzy.ts'
+import type { SearchResult } from './search/fuzzy.ts'
 import { StateStore, TOYBOX_DIR } from './state/store.ts'
 import type { InstalledMod, ToyboxSettings, ToyboxState } from './state/types.ts'
-import { sortVersionsDescending } from './version/semver.ts'
 import type { ArtifactManifest } from './catalog/types.ts'
 
 export interface ToyboxOptions {
@@ -119,7 +119,7 @@ export class Toybox {
 
   constructor(grantedDir: ToyDir, opts: ToyboxOptions = {}) {
     this.root = grantedDir
-    this.fetchFn = opts.fetchFn ?? fetch
+    this.fetchFn = opts.fetchFn ?? ((input, init) => fetch(input, init))
     this.platform = opts.platform ?? detectPlatform()
     this.now = opts.now ?? (() => new Date().toISOString())
     this.client = new IndexClient({
@@ -213,27 +213,16 @@ export class Toybox {
 
   /** Fuzzy search across id/name/summary/tags/authors. */
   search(query: string): SearchResult<CatalogMod>[] {
-    const mods = this.requireIndex().mods
-    return fuzzySearch(query, mods, (m) => [
-      { text: m.id, weight: 3 },
-      { text: m.name, weight: 3 },
-      { text: m.tags.join(' '), weight: 2 },
-      { text: m.summary, weight: 1.5 },
-      { text: m.authors.join(' '), weight: 1 },
-    ])
+    return searchMods(this.requireIndex().mods, query)
   }
 
   /** Releases of a mod eligible for this platform, newest first. */
   eligibleReleases(mod: CatalogMod): CatalogRelease[] {
-    const order = sortVersionsDescending(mod.releases.map((r) => r.version))
-    const byVersion = new Map(mod.releases.map((r) => [r.version, r] as const))
-    return order
-      .map((v) => byVersion.get(v)!)
-      .filter((r) => r.artifacts.some((a) => a.platforms.includes(this.platform)))
+    return eligibleReleases(mod, this.platform)
   }
 
   artifactFor(release: CatalogRelease): CatalogArtifact | null {
-    return release.artifacts.find((a) => a.platforms.includes(this.platform)) ?? null
+    return artifactForPlatform(release, this.platform)
   }
 
   // -------------------------------------------------------------------------

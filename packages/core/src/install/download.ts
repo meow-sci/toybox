@@ -100,7 +100,8 @@ async function fetchVerified(
   via: 'github-api' | 'direct',
   headers: Record<string, string>,
 ): Promise<AcquiredArtifact> {
-  const fetchFn = opts.fetchFn ?? fetch
+  const fetchFn =
+    opts.fetchFn ?? ((input: RequestInfo | URL, init?: RequestInit) => fetch(input, init))
   let res: Response
   try {
     res = await fetchFn(url, {

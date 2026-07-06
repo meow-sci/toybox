@@ -456,6 +456,21 @@ scan() → plan() → apply()`), holding UI state in runes-based stores:
 UI is deliberately minimal-clean for this pass; the control points it drives
 are the durable interface.
 
+**Any-browser operation (catalog mode).** Only the _final install_ requires
+the File System Access API. On browsers without it (Firefox, Safari, …) the
+app boots straight into catalog mode: the full browse/search/readme/resolve
+experience works identically, and "install" becomes a **greenfield bundle
+download** — the selection is resolved against an empty installed set
+(required deps pulled in, optional ones not), every artifact is downloaded
+and digest-verified exactly like an install, and the mod folders are
+streamed into one .zip (`@toybox/core`'s `buildModBundle`) the browser
+saves. A single-mod selection passes the verified upstream zip through
+byte-exact; multi-mod selections re-pack with per-file manifest
+verification and bounded memory (output consolidated into disk-backable
+Blob parts). Extracting the bundle into `mods/` yields exactly what a
+managed install would have written — and a later Chromium session can adopt
+it by content match.
+
 ## 7. Testing
 
 - **Unit/integration (node):** every core module — semver/ksa-version
@@ -516,21 +531,22 @@ are the durable interface.
 
 ## 10. Decisions log (short form)
 
-| #   | Decision                                                      | Why                                                                        |
-| --- | ------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| 1   | Identity = StarMap ModId = folder name                        | Loader ground truth                                                        |
-| 2   | Index owns versioning; SemVer + cargo ranges                  | StarMap is version-agnostic; proven grammar                                |
-| 3   | No `provides`/virtual modules                                 | CKAN's worst ambiguity source; no loader counterpart                       |
-| 4   | Optional deps: never auto-install, validate when present      | Exact StarMap semantics + ALC sharing hazard                               |
-| 5   | Per-file sha256 in state                                      | CKAN's biggest tracking gap                                                |
-| 6   | Stage→journal→apply with roll-forward recovery                | No FS transactions in browsers                                             |
-| 7   | Verify artifact digest **before** extraction                  | Never write unverified bytes                                               |
-| 8   | CI-generated per-file manifests in the index                  | Enables adoption, verify, tamper detection                                 |
-| 9   | TOML sources, compiled JSON index                             | Human-friendly authoring (KSA ecosystem is TOML), one-fetch runtime        |
-| 10  | owners-file + validation-bot auto-merge; generated CODEOWNERS | GitHub can't grant merge to non-members via CODEOWNERS                     |
-| 11  | GitHub API asset endpoint as primary download path            | browser_download_url is not CORS-fetchable (verified)                      |
-| 12  | Local-file fallback as guaranteed install path                | Content addressing makes it equally trustworthy                            |
-| 13  | Grant KSA root (or mods dir)                                  | manifest.toml lives beside mods/ → enable/disable support                  |
-| 14  | All state in `mods/.toybox/`                                  | Hard requirement: ephemeral app, durable disk                              |
-| 15  | KSA build counter normalized to 0                             | Non-monotonic per-machine noise (CKAN-KSA discipline)                      |
-| 16  | 50 MiB artifact cap, per-registration override, stream aborts | Self-protection for CI + players; a release PR can't raise its own ceiling |
+| #   | Decision                                                                                   | Why                                                                        |
+| --- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| 1   | Identity = StarMap ModId = folder name                                                     | Loader ground truth                                                        |
+| 2   | Index owns versioning; SemVer + cargo ranges                                               | StarMap is version-agnostic; proven grammar                                |
+| 3   | No `provides`/virtual modules                                                              | CKAN's worst ambiguity source; no loader counterpart                       |
+| 4   | Optional deps: never auto-install, validate when present                                   | Exact StarMap semantics + ALC sharing hazard                               |
+| 5   | Per-file sha256 in state                                                                   | CKAN's biggest tracking gap                                                |
+| 6   | Stage→journal→apply with roll-forward recovery                                             | No FS transactions in browsers                                             |
+| 7   | Verify artifact digest **before** extraction                                               | Never write unverified bytes                                               |
+| 8   | CI-generated per-file manifests in the index                                               | Enables adoption, verify, tamper detection                                 |
+| 9   | TOML sources, compiled JSON index                                                          | Human-friendly authoring (KSA ecosystem is TOML), one-fetch runtime        |
+| 10  | owners-file + validation-bot auto-merge; generated CODEOWNERS                              | GitHub can't grant merge to non-members via CODEOWNERS                     |
+| 11  | GitHub API asset endpoint as primary download path                                         | browser_download_url is not CORS-fetchable (verified)                      |
+| 12  | Local-file fallback as guaranteed install path                                             | Content addressing makes it equally trustworthy                            |
+| 13  | Grant KSA root (or mods dir)                                                               | manifest.toml lives beside mods/ → enable/disable support                  |
+| 14  | All state in `mods/.toybox/`                                                               | Hard requirement: ephemeral app, durable disk                              |
+| 15  | KSA build counter normalized to 0                                                          | Non-monotonic per-machine noise (CKAN-KSA discipline)                      |
+| 16  | 50 MiB artifact cap, per-registration override, stream aborts                              | Self-protection for CI + players; a release PR can't raise its own ceiling |
+| 17  | FSA gates only the final install; other browsers get a verified greenfield bundle download | Universal reach without compromising the integrity story                   |

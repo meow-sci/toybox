@@ -21,7 +21,7 @@
     <div class="grid">
       {#each results as r (r.item.id)}
         {@const installed = app.installedById(r.item.id)}
-        {@const latest = app.engine?.eligibleReleases(r.item)[0]}
+        {@const latest = app.releasesFor(r.item)[0]}
         <button class="card mod" onclick={() => (app.selectedModId = r.item.id)}>
           <div class="head">
             <strong>{r.item.name}</strong>
