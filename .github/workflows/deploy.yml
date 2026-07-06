@@ -2,7 +2,11 @@ name: deploy
 
 on:
   push:
-    branches: [main]
+    # The feature branch is listed so the deploy can be exercised before the
+    # work lands on main; the github-pages environment's deployment-branch
+    # policy must allow it (Settings → Environments → github-pages), else
+    # only pushes to main will actually deploy. Drop after merge.
+    branches: [main, claude/ksa-mod-manager-design-ivhb2r]
   workflow_dispatch:
 
 permissions:

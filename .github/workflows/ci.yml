@@ -2,7 +2,9 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    # The feature branch is listed so CI runs before the work lands on main;
+    # drop it after merge.
+    branches: [main, claude/ksa-mod-manager-design-ivhb2r]
   pull_request:
 
 concurrency:
