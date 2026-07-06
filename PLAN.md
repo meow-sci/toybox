@@ -109,7 +109,8 @@ mod.toml `name` == StarMap ModId`. Everything in toybox keys on this string.
 
 ### 1.3 flexo (the proven browser/FSA tech stack)
 
-toybox reuses flexo's architecture wholesale, swapping React for Svelte 5:
+toybox reuses flexo's architecture wholesale — React 19 + React Compiler,
+react-aria-components, Tailwind 4 + tailwind-variants, nanostores:
 
 - Vite 8 (Rolldown-native) + TypeScript + oxlint + oxfmt + pnpm, exact-pinned
   deps, `base` set for Pages, two-job Pages deploy workflow with
@@ -121,7 +122,7 @@ toybox reuses flexo's architecture wholesale, swapping React for Svelte 5:
   _Note: the IndexedDB handle is a reconnection convenience only — zero state
   lives in the browser; losing it just means re-picking the folder._
 - Hard "no UI imports in domain code" separation — in toybox this is a real
-  package boundary (`@toybox/core` has no Svelte anywhere).
+  package boundary (`@toybox/core` has no React anywhere).
 
 ---
 
@@ -133,7 +134,7 @@ meow-sci/toybox-index (GitHub repo)                meow-sci/toybox (this repo)
 │ mods/<id>/mod.toml    (identity) │   compile     │ packages/core  @toybox/core  │
 │ mods/<id>/README.md   (rich md)  │   (CI, on     │   headless engine, no UI     │
 │ mods/<id>/releases/<v>.toml      │    merge)     │ packages/app   @toybox/app   │
-│ CODEOWNERS (generated)           │──────────────►│   Svelte 5 SPA               │
+│ CODEOWNERS (generated)           │──────────────►│   React 19 SPA               │
 │ .github/workflows                │  GitHub Pages │        │ GitHub Pages        │
 │   validate.yml  (PR gate)        │  v1/index.json│        ▼                     │
 │   publish.yml   (build index)    │  v1/manifests/│  player's browser (Chromium) │
@@ -473,15 +474,31 @@ flags never flipped; unknown keys round-tripped), and exposes per-mod
 
 ---
 
-## 6. The app (@toybox/app) — Svelte 5
+## 6. The app (@toybox/app) — React 19, flexo's stack verbatim
 
-Same core tech as flexo, React swapped for Svelte 5 (runes):
-Vite 8 (Rolldown) · TypeScript strict · oxlint · oxfmt · pnpm · exact pins ·
-GitHub Pages deploy with `base: '/toybox/'`.
+The exact tech stack flexo already proved:
+React 19 + React Compiler · react-aria-components (accessible unstyled
+primitives) · Tailwind CSS 4 + tailwind-variants · nanostores (+
+@nanostores/react) · Vite 8 (Rolldown) · TypeScript strict · oxlint (incl.
+the react-hooks compiler rules) · oxfmt · pnpm · exact pins · GitHub Pages
+deploy with `base: '/toybox/'`.
 
-Structure: `@toybox/core` is the entire brain (headless, tested); the app is a
-thin driver around the `Toybox` facade (`open() → refreshIndex() → search()/
-scan() → plan() → apply()`), holding UI state in runes-based stores:
+> History: the first pass used Svelte 5 runes; it was rewritten onto the
+> React/flexo pattern (decision 21) so both meow-sci frontends share one
+> stack, one component-kit discipline, and one set of skills.
+
+Structure: `@toybox/core` is the entire brain (headless, tested); the app is
+a thin driver around the `Toybox` facade (`open() → refreshIndex() →
+search()/scan() → plan() → apply()`). State lives in `src/state/` as
+nanostores atoms + action functions (logic in stores, components subscribe
+via `useStore` and stay thin; render-time helpers are pure functions of
+their arguments, so the React Compiler can memoize safely). The UI is built
+from a small owned kit of react-aria + Tailwind widgets (`src/ui/kit/`:
+Button, SearchField/TextField, Select, Checkbox, Modal/Dialog, ProgressBar,
+Badge/Tag — flexo's tv/focusRing pattern), and every screen works in
+desktop and phone-sized viewports (wrapping header, stacked cards, the mod
+detail as a full-screen sheet and the cart as a full-width slide-over on
+small screens):
 
 - **Grant flow** — pick the `Kitten Space Agency` folder (full features) or
   the `mods` folder (manifest sync disabled, with a hint); IndexedDB handle
@@ -584,25 +601,26 @@ it by content match.
 
 ## 10. Decisions log (short form)
 
-| #   | Decision                                                                                                                                                         | Why                                                                                                                                                                                       |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Identity = StarMap ModId = folder name                                                                                                                           | Loader ground truth                                                                                                                                                                       |
-| 2   | Index owns versioning; SemVer + cargo ranges                                                                                                                     | StarMap is version-agnostic; proven grammar                                                                                                                                               |
-| 3   | No `provides`/virtual modules                                                                                                                                    | CKAN's worst ambiguity source; no loader counterpart                                                                                                                                      |
-| 4   | Optional deps: never auto-install, validate when present                                                                                                         | Exact StarMap semantics + ALC sharing hazard                                                                                                                                              |
-| 5   | Per-file sha256 in state                                                                                                                                         | CKAN's biggest tracking gap                                                                                                                                                               |
-| 6   | Stage→journal→apply with roll-forward recovery                                                                                                                   | No FS transactions in browsers                                                                                                                                                            |
-| 7   | Verify artifact digest **before** extraction                                                                                                                     | Never write unverified bytes                                                                                                                                                              |
-| 8   | CI-generated per-file manifests in the index                                                                                                                     | Enables adoption, verify, tamper detection                                                                                                                                                |
-| 9   | TOML sources, compiled JSON index                                                                                                                                | Human-friendly authoring (KSA ecosystem is TOML), one-fetch runtime                                                                                                                       |
-| 10  | owners-file + validation-bot auto-merge; generated CODEOWNERS                                                                                                    | GitHub can't grant merge to non-members via CODEOWNERS                                                                                                                                    |
-| 11  | GitHub API asset endpoint as primary download path                                                                                                               | browser_download_url is not CORS-fetchable (verified)                                                                                                                                     |
-| 12  | Local-file fallback as guaranteed install path                                                                                                                   | Content addressing makes it equally trustworthy                                                                                                                                           |
-| 13  | Grant KSA root (or mods dir)                                                                                                                                     | manifest.toml lives beside mods/ → enable/disable support                                                                                                                                 |
-| 14  | All state in `mods/.toybox/`                                                                                                                                     | Hard requirement: ephemeral app, durable disk                                                                                                                                             |
-| 15  | KSA build counter normalized to 0                                                                                                                                | Non-monotonic per-machine noise (CKAN-KSA discipline)                                                                                                                                     |
-| 16  | 50 MiB artifact cap, per-registration override, stream aborts                                                                                                    | Self-protection for CI + players; a release PR can't raise its own ceiling                                                                                                                |
-| 17  | FSA gates only the final install; other browsers get a verified greenfield bundle download                                                                       | Universal reach without compromising the integrity story                                                                                                                                  |
-| 18  | Pages mirror of the newest mirror_versions releases (admin-gated per registration)                                                                               | GitHub releases aren't browser-fetchable; the Pages site is same-origin and free; budget is finite so it's rationed governance-side                                                       |
-| 19  | `required`/`recommends` rich references + mandatory `who_can_reference` regex permissioning enforced at index compile (recommends filtered, required hard-fails) | Self-declared references need an author-side opt-out (the CKAN drama); filtering a hard dep would ship broken installs, so those block instead                                            |
-| 20  | Light/dark theming: system by default, forced override in `localStorage['toybox.theme']`, key REMOVED when back on system                                        | The one sanctioned localStorage exception — a cosmetic browser preference, not app state; losing it costs nothing. Absence of the key IS "system", so fresh browsers always follow the OS |
+| #   | Decision                                                                                                                                                         | Why                                                                                                                                                                                                |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Identity = StarMap ModId = folder name                                                                                                                           | Loader ground truth                                                                                                                                                                                |
+| 2   | Index owns versioning; SemVer + cargo ranges                                                                                                                     | StarMap is version-agnostic; proven grammar                                                                                                                                                        |
+| 3   | No `provides`/virtual modules                                                                                                                                    | CKAN's worst ambiguity source; no loader counterpart                                                                                                                                               |
+| 4   | Optional deps: never auto-install, validate when present                                                                                                         | Exact StarMap semantics + ALC sharing hazard                                                                                                                                                       |
+| 5   | Per-file sha256 in state                                                                                                                                         | CKAN's biggest tracking gap                                                                                                                                                                        |
+| 6   | Stage→journal→apply with roll-forward recovery                                                                                                                   | No FS transactions in browsers                                                                                                                                                                     |
+| 7   | Verify artifact digest **before** extraction                                                                                                                     | Never write unverified bytes                                                                                                                                                                       |
+| 8   | CI-generated per-file manifests in the index                                                                                                                     | Enables adoption, verify, tamper detection                                                                                                                                                         |
+| 9   | TOML sources, compiled JSON index                                                                                                                                | Human-friendly authoring (KSA ecosystem is TOML), one-fetch runtime                                                                                                                                |
+| 10  | owners-file + validation-bot auto-merge; generated CODEOWNERS                                                                                                    | GitHub can't grant merge to non-members via CODEOWNERS                                                                                                                                             |
+| 11  | GitHub API asset endpoint as primary download path                                                                                                               | browser_download_url is not CORS-fetchable (verified)                                                                                                                                              |
+| 12  | Local-file fallback as guaranteed install path                                                                                                                   | Content addressing makes it equally trustworthy                                                                                                                                                    |
+| 13  | Grant KSA root (or mods dir)                                                                                                                                     | manifest.toml lives beside mods/ → enable/disable support                                                                                                                                          |
+| 14  | All state in `mods/.toybox/`                                                                                                                                     | Hard requirement: ephemeral app, durable disk                                                                                                                                                      |
+| 15  | KSA build counter normalized to 0                                                                                                                                | Non-monotonic per-machine noise (CKAN-KSA discipline)                                                                                                                                              |
+| 16  | 50 MiB artifact cap, per-registration override, stream aborts                                                                                                    | Self-protection for CI + players; a release PR can't raise its own ceiling                                                                                                                         |
+| 17  | FSA gates only the final install; other browsers get a verified greenfield bundle download                                                                       | Universal reach without compromising the integrity story                                                                                                                                           |
+| 18  | Pages mirror of the newest mirror_versions releases (admin-gated per registration)                                                                               | GitHub releases aren't browser-fetchable; the Pages site is same-origin and free; budget is finite so it's rationed governance-side                                                                |
+| 19  | `required`/`recommends` rich references + mandatory `who_can_reference` regex permissioning enforced at index compile (recommends filtered, required hard-fails) | Self-declared references need an author-side opt-out (the CKAN drama); filtering a hard dep would ship broken installs, so those block instead                                                     |
+| 20  | Light/dark theming: system by default, forced override in `localStorage['toybox.theme']`, key REMOVED when back on system                                        | The one sanctioned localStorage exception — a cosmetic browser preference, not app state; losing it costs nothing. Absence of the key IS "system", so fresh browsers always follow the OS          |
+| 21  | UI rewritten from Svelte 5 onto flexo's React stack: React 19 + Compiler, react-aria-components kit, Tailwind 4 + tailwind-variants, nanostores state            | One frontend stack across meow-sci projects (shared patterns, kit discipline, lint rules, skills); react-aria gives accessibility for free; the headless core made the swap a pure frontend change |

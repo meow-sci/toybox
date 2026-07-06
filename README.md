@@ -43,7 +43,7 @@ PLAN.md           the design document
 packages/core     @toybox/core — the headless package manager (no UI imports;
                   fully tested against an in-memory FS and against real OPFS
                   FileSystemDirectoryHandles in Chromium)
-packages/app      @toybox/app — the Svelte 5 SPA driving the core facade
+packages/app      @toybox/app — the React 19 SPA (react-aria + Tailwind + nanostores)
 ```
 
 ## Development
@@ -53,7 +53,7 @@ pnpm install
 pnpm dev             # run the app (Vite)
 pnpm lint            # oxlint
 pnpm fmt             # oxfmt
-pnpm typecheck       # tsc + svelte-check
+pnpm typecheck       # tsc (core + app)
 pnpm test            # node unit/integration suites
 pnpm test:browser    # engine tests on real FSA handles (headless Chromium)
 pnpm build           # typecheck core + build the app
