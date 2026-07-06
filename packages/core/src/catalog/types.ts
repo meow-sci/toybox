@@ -40,8 +40,12 @@ export interface CatalogMod {
   tags: string[]
   /** GitHub logins allowed to self-publish releases (governance metadata). */
   owners: string[]
-  /** Rich markdown readme, rendered in the app. */
-  readme?: string
+  /**
+   * Index-relative path of the mod's markdown readme (convention:
+   * `mods/<slug>/readme.md`). Fetched on demand — never inlined, so the
+   * central index stays small no matter how large the catalog grows.
+   */
+  readmePath?: string
   /** Sorted newest-first by semver. */
   releases: CatalogRelease[]
 }
@@ -218,7 +222,9 @@ function parseMod(v: unknown, what: string): CatalogMod {
       : {}),
     tags: strArray(v.tags, `${what}.tags`),
     owners: strArray(v.owners, `${what}.owners`),
-    ...(optStr(v.readme, `${what}.readme`) !== undefined ? { readme: v.readme as string } : {}),
+    ...(optStr(v.readmePath, `${what}.readmePath`) !== undefined
+      ? { readmePath: v.readmePath as string }
+      : {}),
     releases,
   }
 }

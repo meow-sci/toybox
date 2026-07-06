@@ -195,12 +195,23 @@ export class Toybox {
   async refreshIndex(): Promise<ToyboxIndex> {
     this.indexCache = await this.client.fetchIndex()
     this.manifestCache.clear()
+    this.readmeCache.clear()
     return this.indexCache
   }
 
   private requireIndex(): ToyboxIndex {
     if (!this.indexCache) throw new Error('Index not loaded — call refreshIndex() first.')
     return this.indexCache
+  }
+
+  private readmeCache = new Map<string, string | null>()
+
+  /** Lazy-fetched, cached markdown readme for a mod (null when absent). */
+  async readmeFor(mod: CatalogMod): Promise<string | null> {
+    if (this.readmeCache.has(mod.id)) return this.readmeCache.get(mod.id)!
+    const readme = await this.client.fetchReadme(mod).catch(() => null)
+    this.readmeCache.set(mod.id, readme)
+    return readme
   }
 
   async manifestFor(artifact: CatalogArtifact): Promise<ArtifactManifest | null> {

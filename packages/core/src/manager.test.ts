@@ -164,6 +164,17 @@ describe('Toybox: full lifecycle', () => {
     if (!('plan' in result)) expect(result.explanation).toContain('NoSuchMod')
   })
 
+  it('fetches readmes lazily by convention path (and caches misses)', async () => {
+    const root = new MemDir()
+    const tb = await makeToybox(root)
+    const purrtty = tb.index!.mods.find((m) => m.id === 'purrTTY')!
+    expect(purrtty.readmePath).toBe('mods/purrtty/readme.md')
+    const readme = await tb.readmeFor(purrtty)
+    expect(readme).toContain('# purrTTY')
+    const gatos = tb.index!.mods.find((m) => m.id === 'gatOS')!
+    expect(await tb.readmeFor(gatos)).toBeNull() // no readmePath declared
+  })
+
   it('search finds mods fuzzily', async () => {
     const root = new MemDir()
     const tb = await makeToybox(root)

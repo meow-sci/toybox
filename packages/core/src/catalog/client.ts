@@ -6,7 +6,7 @@
  * hosted on the same Pages origin the fetch is same-origin anyway.
  */
 
-import type { ArtifactManifest, CatalogArtifact, ToyboxIndex } from './types.ts'
+import type { ArtifactManifest, CatalogArtifact, CatalogMod, ToyboxIndex } from './types.ts'
 import { parseArtifactManifest, parseIndex } from './types.ts'
 
 export const DEFAULT_INDEX_URL = 'https://meow.science.fail/toybox-index/v1/index.json'
@@ -44,5 +44,14 @@ export class IndexClient {
     const res = await this.fetchFn(url, { cache: 'no-cache' })
     if (!res.ok) throw new Error(`Failed to fetch file manifest (HTTP ${res.status}) from ${url}`)
     return parseArtifactManifest(await res.json())
+  }
+
+  /** Lazy-fetch a mod's markdown readme (null when it has none). */
+  async fetchReadme(mod: Pick<CatalogMod, 'readmePath'>): Promise<string | null> {
+    if (!mod.readmePath) return null
+    const url = this.resolveIndexRelative(mod.readmePath)
+    const res = await this.fetchFn(url)
+    if (!res.ok) throw new Error(`Failed to fetch readme (HTTP ${res.status}) from ${url}`)
+    return res.text()
   }
 }

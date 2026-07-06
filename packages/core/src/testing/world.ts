@@ -58,6 +58,7 @@ export function buildWorld() {
     mod('purrTTY', [release('1.1.0', [p110art]), release('1.0.1', [p101art])], {
       summary: 'A terminal emulator for KSA',
       tags: ['terminal', 'utility'],
+      readmePath: 'mods/purrtty/readme.md',
     }),
     mod(
       'gatOS',
@@ -75,6 +76,8 @@ export function buildWorld() {
     switch (url) {
       case WORLD_INDEX_URL:
         return jsonResponse(idx)
+      case 'https://index.test/v1/mods/purrtty/readme.md':
+        return new Response('# purrTTY\n\nA terminal emulator for KSA.')
       case 'https://index.test/v1/manifests/purrtty/1.0.1.universal.json':
         return jsonResponse(
           manifestOfZip('purrTTY', '1.0.1', 'universal', p101.sha256, PURRTTY_1_0_1, 'purrTTY'),

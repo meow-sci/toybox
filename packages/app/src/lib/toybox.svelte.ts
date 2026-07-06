@@ -113,6 +113,8 @@ class AppStore {
   )
 
   verifyResults = $state<Record<string, VerifyResult>>({})
+  /** Lazily-fetched readmes: undefined = not requested, null = none/failed. */
+  readmes = $state<Record<string, string | null | 'loading'>>({})
 
   private toybox: Toybox | null = null
   private handle: FileSystemDirectoryHandle | null = null
@@ -192,6 +194,7 @@ class AppStore {
       this.index = this.toybox
         ? await this.toybox.refreshIndex()
         : await this.catalogClient.fetchIndex()
+      this.readmes = {}
     } catch (e) {
       this.indexError = (e as Error).message
     }
@@ -209,6 +212,22 @@ class AppStore {
 
   artifactRef(release: CatalogRelease): CatalogArtifact | null {
     return artifactForPlatform(release, this.platform)
+  }
+
+  /** Kick off (or reuse) the lazy readme fetch for a mod. */
+  loadReadme(mod: CatalogMod): void {
+    if (this.readmes[mod.id] !== undefined) return
+    if (!mod.readmePath) {
+      this.readmes = { ...this.readmes, [mod.id]: null }
+      return
+    }
+    this.readmes = { ...this.readmes, [mod.id]: 'loading' }
+    const fetchIt = this.toybox
+      ? this.toybox.readmeFor(mod)
+      : this.catalogClient.fetchReadme(mod).catch(() => null)
+    void fetchIt.then((text) => {
+      this.readmes = { ...this.readmes, [mod.id]: text }
+    })
   }
 
   /** Catalog mode only: retarget the bundle at a different OS. */
