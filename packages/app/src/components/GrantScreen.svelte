@@ -1,10 +1,14 @@
 <script lang="ts">
   import { app } from '../lib/toybox.svelte.ts'
+  import ThemeToggle from './ThemeToggle.svelte'
 </script>
 
 <div class="grant">
+  <div class="corner">
+    <ThemeToggle />
+  </div>
   <div class="card hero">
-    <h1>🧸 toybox</h1>
+    <h1>🧶 toybox</h1>
     <p class="muted">
       A mod manager for <strong>Kitten Space Agency</strong> that runs entirely in your browser.
       No installer, no account, no cloud — your mods folder is the database.
@@ -52,6 +56,11 @@
     display: grid;
     place-items: center;
     padding: 20px;
+  }
+  .corner {
+    position: fixed;
+    top: 14px;
+    right: 16px;
   }
   .hero {
     max-width: 560px;

@@ -1,4 +1,4 @@
-# toybox 🧸
+# toybox 🧶
 
 A mod manager for **Kitten Space Agency** that runs entirely in the browser.
 No installer, no backend, no account: the app is a static page, your mods

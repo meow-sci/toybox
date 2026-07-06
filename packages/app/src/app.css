@@ -1,3 +1,6 @@
+/* Dark is the default palette (also the no-JS fallback); index.html stamps
+   data-theme on <html> before first paint, and the theme store keeps it in
+   sync with the user preference / system setting. */
 :root {
   color-scheme: dark;
   --bg: #14161a;
@@ -16,6 +19,21 @@
     -apple-system,
     'Segoe UI',
     sans-serif;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f4f5f7;
+  --bg-raised: #ffffff;
+  --bg-hover: #e8eaef;
+  --border: #d3d7df;
+  --text: #23262e;
+  --text-dim: #646b78;
+  --accent: #3760c4;
+  --accent-dim: #b7c8ef;
+  --good: #4d7f1f;
+  --warn: #9a6a08;
+  --bad: #c03256;
 }
 
 * {
