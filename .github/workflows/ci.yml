@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  push:
+    # The feature branch is listed so CI runs before the work lands on main;
+    # drop it after merge.
+    branches: [main, claude/ksa-mod-manager-design-ivhb2r]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Format check
+        run: pnpm fmt:check
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Unit & integration tests
+        run: pnpm test
+      - name: Install Chromium for browser tests
+        run: pnpm --filter @toybox/core exec playwright install --with-deps chromium
+      - name: Browser tests (real FSA/OPFS in Chromium)
+        run: pnpm test:browser
+      - name: Build
+        run: pnpm build

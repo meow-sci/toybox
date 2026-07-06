@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "typescript", "unicorn", "oxc"],
+  "env": {
+    "browser": true,
+    "es2026": true
+  },
+  "ignorePatterns": ["dist", "coverage"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "unicorn/no-new-array": "off",
+    "unicorn/require-module-specifiers": "off"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "toybox",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @toybox/app dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "test": "pnpm -r test",
+    "preview": "pnpm --filter @toybox/app preview",
+    "test:browser": "pnpm --filter @toybox/core test:browser"
+  },
+  "devDependencies": {
+    "@types/node": "26.1.0",
+    "oxfmt": "0.56.0",
+    "oxlint": "1.71.0",
+    "typescript": "6.0.3"
+  }
+}
