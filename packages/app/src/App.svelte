@@ -88,6 +88,10 @@
     {#if cartOpen}
       <CartPanel onclose={() => (cartOpen = false)} />
     {/if}
+
+    <footer class="app-footer muted">
+      <a href={app.indexBrowseUrl()} target="_blank" rel="noopener noreferrer">browse index</a>
+    </footer>
   </div>
 {/if}
 
@@ -144,5 +148,20 @@
   .banner.bad {
     background: color-mix(in srgb, var(--bad) 12%, transparent);
     border: 1px solid var(--bad);
+  }
+  .app-footer {
+    margin-top: 40px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    text-align: right;
+  }
+  .app-footer a {
+    color: var(--text-dim);
+    text-decoration: none;
+  }
+  .app-footer a:hover {
+    color: var(--accent);
+    text-decoration: underline;
   }
 </style>

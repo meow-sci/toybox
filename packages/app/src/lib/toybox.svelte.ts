@@ -13,6 +13,7 @@ import {
   buildModBundle,
   detectPlatform,
   eligibleReleases,
+  modIndexFolder,
   resolve,
   searchMods,
   type ApplyEvent,
@@ -212,6 +213,24 @@ class AppStore {
 
   artifactRef(release: CatalogRelease): CatalogArtifact | null {
     return artifactForPlatform(release, this.platform)
+  }
+
+  /**
+   * Absolute URL of a folder in the published index's directory browser
+   * (always '/'-terminated — the listing pages are served as folder URLs).
+   */
+  indexBrowseUrl(relFolder = ''): string {
+    const resolveRel = this.toybox
+      ? (p: string) => this.toybox!.resolveIndexRelative(p)
+      : (p: string) => this.catalogClient.resolveIndexRelative(p)
+    const url = resolveRel(relFolder === '' ? '.' : relFolder)
+    return url.endsWith('/') ? url : `${url}/`
+  }
+
+  /** Browse URL of a mod's folder in the index, when derivable. */
+  modBrowseUrl(mod: CatalogMod): string | null {
+    const folder = modIndexFolder(mod)
+    return folder ? this.indexBrowseUrl(folder) : null
   }
 
   /** Kick off (or reuse) the lazy readme fetch for a mod. */

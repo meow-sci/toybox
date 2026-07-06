@@ -36,3 +36,23 @@ export function artifactForPlatform(
 ): CatalogArtifact | null {
   return release.artifacts.find((a) => a.platforms.includes(platform)) ?? null
 }
+
+/**
+ * The mod's folder inside the published index (`mods/<slug>/`), derived from
+ * any of its convention-based file paths. Used for "browse this mod in the
+ * index" links; always ends with '/'. Null when the mod carries no
+ * convention paths (e.g. an index compiled with --skip-artifacts and no
+ * readme).
+ */
+export function modIndexFolder(mod: CatalogMod): string | null {
+  const candidates = [
+    mod.readmePath,
+    ...mod.releases.flatMap((r) => r.artifacts.flatMap((a) => [a.manifest, a.mirror])),
+  ]
+  for (const path of candidates) {
+    if (!path) continue
+    const m = /^(mods\/[^/]+\/)/.exec(path)
+    if (m) return m[1]!
+  }
+  return null
+}

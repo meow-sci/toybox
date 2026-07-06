@@ -214,6 +214,11 @@ export class Toybox {
     return readme
   }
 
+  /** Resolve an index-relative path (readmePath/manifest/mirror/folders) to an absolute URL. */
+  resolveIndexRelative(path: string): string {
+    return this.client.resolveIndexRelative(path)
+  }
+
   async manifestFor(artifact: CatalogArtifact): Promise<ArtifactManifest | null> {
     const key = `${artifact.url}#${artifact.key}`
     if (this.manifestCache.has(key)) return this.manifestCache.get(key)!

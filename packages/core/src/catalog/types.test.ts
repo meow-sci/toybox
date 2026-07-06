@@ -84,6 +84,24 @@ describe('parseIndex', () => {
   })
 })
 
+describe('modIndexFolder', () => {
+  it('derives the mod folder from readmePath, manifest, or mirror', async () => {
+    const { modIndexFolder } = await import('./select.ts')
+    const base = parseIndex(validIndex).mods[0]!
+    expect(modIndexFolder(base)).toBeNull() // no convention paths declared
+
+    expect(modIndexFolder({ ...base, readmePath: 'mods/purrtty/readme.md' })).toBe('mods/purrtty/')
+
+    const withManifest = structuredClone(base)
+    withManifest.releases[0]!.artifacts[0]!.manifest = 'mods/purrtty/manifests/1.1.0.universal.json'
+    expect(modIndexFolder(withManifest)).toBe('mods/purrtty/')
+
+    const withMirror = structuredClone(base)
+    withMirror.releases[0]!.artifacts[0]!.mirror = 'mods/purrtty/artifacts/1.1.0.universal.zip'
+    expect(modIndexFolder(withMirror)).toBe('mods/purrtty/')
+  })
+})
+
 describe('parseArtifactManifest', () => {
   it('parses valid manifests and rejects unclean paths', () => {
     const m = parseArtifactManifest({
