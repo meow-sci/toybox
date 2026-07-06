@@ -1,8 +1,8 @@
 import { useStore } from '@nanostores/react'
-import { useState } from 'react'
 import { ShoppingCart } from 'lucide-react'
 import {
   $active,
+  $cartOpen,
   $cartSize,
   $fatalError,
   $grant,
@@ -64,7 +64,7 @@ export function App() {
   const indexError = useStore($indexError)
   const selectedModId = useStore($selectedModId)
 
-  const [cartOpen, setCartOpen] = useState(false)
+  const cartOpen = useStore($cartOpen)
 
   if (!active) return <GrantScreen />
 
@@ -108,7 +108,7 @@ export function App() {
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle />
-          <Button variant="primary" onPress={() => setCartOpen((v) => !v)}>
+          <Button variant="primary" onPress={() => $cartOpen.set(!cartOpen)}>
             <ShoppingCart size={15} />
             Cart{cartSize > 0 ? ` (${cartSize})` : ''}
           </Button>
@@ -146,7 +146,7 @@ export function App() {
       {selectedModId && (
         <ModDetail modId={selectedModId} onClose={() => $selectedModId.set(null)} />
       )}
-      {cartOpen && <CartPanel onClose={() => setCartOpen(false)} />}
+      {cartOpen && <CartPanel onClose={() => $cartOpen.set(false)} />}
 
       <footer className="mt-10 border-t border-border pt-3 text-right text-[11px]">
         <Link

@@ -104,6 +104,8 @@ export const $scanning = atom(false)
 // Browse / search
 export const $query = atom('')
 export const $selectedModId = atom<string | null>(null)
+/** Whether the (single, reusable) cart panel is open. */
+export const $cartOpen = atom(false)
 
 // Cart → plan → apply
 export const $cartInstall = atom<CartItem[]>([])
