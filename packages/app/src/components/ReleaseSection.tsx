@@ -41,14 +41,15 @@ function ManifestTable({ release, platform }: { release: CatalogRelease; platfor
 
   return (
     <Disclosure
+      standalone
       onExpandedChange={(expanded) => {
         if (expanded && artifact) loadManifest(artifact)
       }}
     >
-      <DisclosureTrigger className="py-1 text-xs font-semibold tracking-wide text-fg-muted uppercase">
-        File manifest
+      <DisclosureTrigger className="py-1">
+        <strong>File manifest</strong>
         {artifact?.fileCount !== undefined && (
-          <span className="font-normal normal-case">({artifact.fileCount} files)</span>
+          <span className="text-fg-muted">({artifact.fileCount} files)</span>
         )}
       </DisclosureTrigger>
       <DisclosurePanel>
@@ -110,10 +111,17 @@ export function ReleaseSection({
         </DisclosureTrigger>
         {isCurrent ? (
           <span className="text-fg-muted">current</span>
-        ) : (
+        ) : artifact ? (
           <Button size="sm" onPress={() => addInstall(modId, release.version)}>
             {installedMod ? 'switch to' : 'add to cart'}
           </Button>
+        ) : (
+          <span
+            className="text-xs whitespace-nowrap text-fg-muted"
+            title={`This release ships no artifact for ${platform}; it cannot be installed on this OS.`}
+          >
+            no {platform} build
+          </span>
         )}
       </div>
 
@@ -133,7 +141,18 @@ export function ReleaseSection({
             {artifact?.installSize !== undefined && (
               <span className="text-fg-muted">installed {formatBytes(artifact.installSize)}</span>
             )}
-            {artifact && <Tag title="Artifact platforms">{artifact.platforms.join(' · ')}</Tag>}
+            {artifact ? (
+              <Tag title="Artifact platforms">{artifact.platforms.join(' · ')}</Tag>
+            ) : (
+              <>
+                <Badge tone="warn">no {platform} artifact</Badge>
+                {release.artifacts.map((a) => (
+                  <Tag key={a.key} title={`"${a.key}" artifact platforms`}>
+                    {a.platforms.join(' · ')}
+                  </Tag>
+                ))}
+              </>
+            )}
           </div>
 
           <ManifestTable release={release} platform={platform} />

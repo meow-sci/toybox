@@ -17,10 +17,10 @@ import {
   artifactForPlatform,
   buildModBundle,
   detectPlatform,
-  eligibleReleases,
   modIndexFolder,
   resolve,
   searchMods,
+  sortVersionsDescending,
   type ApplyEvent,
   type ArtifactManifest,
   type CartItem,
@@ -247,9 +247,18 @@ export async function refreshIndex(): Promise<void> {
   }
 }
 
-/** Platform-eligible releases, newest first — pure; works in both modes. */
-export function releasesFor(mod: CatalogMod, platform: Platform): CatalogRelease[] {
-  return eligibleReleases(mod, platform)
+/**
+ * ALL releases, newest first, with NO platform filter. This is THE release
+ * list for every display surface: the catalog always shows every version to
+ * every user regardless of host-OS detection — per-release platform
+ * availability is marked in the UI, never used to hide a version.
+ * (Platform eligibility still gates *installation*, in the resolver and in
+ * the update-available check.)
+ */
+export function sortedReleases(mod: CatalogMod): CatalogRelease[] {
+  const order = sortVersionsDescending(mod.releases.map((r) => r.version))
+  const byVersion = new Map(mod.releases.map((r) => [r.version, r] as const))
+  return order.map((v) => byVersion.get(v)!)
 }
 
 export function artifactRef(release: CatalogRelease, platform: Platform): CatalogArtifact | null {

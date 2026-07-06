@@ -16,7 +16,7 @@ import {
   loadReadme,
   modBrowseUrl,
   modById,
-  releasesFor,
+  sortedReleases,
 } from '../state/appStore.ts'
 import { Badge, Button, Dialog, DisclosureGroup, Link, Modal } from '../ui/kit'
 import { Markdown } from './Markdown.tsx'
@@ -32,7 +32,9 @@ export function ModDetail({ modId, onClose }: { modId: string; onClose: () => vo
 
   const mod = modById(index, modId)
   const installedMod = installedById(installed, modId)
-  const releases = mod ? releasesFor(mod, platform) : []
+  // Show EVERY version — availability for the current platform is marked
+  // per release instead of silently hiding foreign-platform releases.
+  const releases = mod ? sortedReleases(mod) : []
   const readme = readmes[modId]
   const browseUrl = mod ? modBrowseUrl(mod) : null
   const carted = inCart(cartInstall, cartRemove, modId)
