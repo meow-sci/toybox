@@ -136,6 +136,7 @@ export function ReleaseSection({
           <SplitButton
             size="sm"
             menuLabel="Choose install platform"
+            subLabel={defaultTarget}
             onPress={() => addInstallFor(modId, defaultTarget, release.version)}
             onAction={(p) => addInstallFor(modId, p as Platform, release.version)}
             items={supported.map((p) => ({
@@ -145,7 +146,6 @@ export function ReleaseSection({
             }))}
           >
             {installedMod ? 'switch to' : 'add to cart'}
-            {defaultTarget !== platform && <span className="text-fg-muted">({defaultTarget})</span>}
           </SplitButton>
         )}
       </div>

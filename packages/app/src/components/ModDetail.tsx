@@ -19,6 +19,7 @@ import {
   sortedReleases,
 } from '../state/appStore.ts'
 import { Badge, Button, Dialog, DisclosureGroup, Link, Modal } from '../ui/kit'
+import { CartFab } from './CartFab.tsx'
 import { Markdown } from './Markdown.tsx'
 import { ReleaseSection } from './ReleaseSection.tsx'
 
@@ -152,6 +153,7 @@ export function ModDetail({ modId, onClose }: { modId: string; onClose: () => vo
             )}
           </>
         )}
+        <CartFab />
       </Dialog>
     </Modal>
   )
