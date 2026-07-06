@@ -321,7 +321,7 @@ export async function applyTransaction(
   return result
 }
 
-function verifyAgainstManifest(
+export function verifyAgainstManifest(
   modId: string,
   files: InstalledFile[],
   manifest: ArtifactManifest,

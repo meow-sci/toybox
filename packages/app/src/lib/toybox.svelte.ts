@@ -7,15 +7,25 @@
 
 import {
   FsaDir,
+  IndexClient,
   Toybox,
+  artifactForPlatform,
+  buildModBundle,
+  detectPlatform,
+  eligibleReleases,
+  resolve,
+  searchMods,
   type ApplyEvent,
   type CartItem,
   type CatalogArtifact,
   type CatalogMod,
+  type CatalogRelease,
   type GrantInfo,
   type InstalledMod,
   type PlannedTransaction,
+  type Platform,
   type RecoveryReport,
+  type Resolution,
   type ResolutionFailure,
   type ScanResult,
   type SearchResult,
@@ -23,7 +33,14 @@ import {
   type ToyboxSettings,
   type VerifyResult,
 } from '@toybox/core'
-import { forgetGrant, initGrant, pickFolder, regrant, type GrantStatus } from './grant.ts'
+import {
+  forgetGrant,
+  fsaSupported,
+  initGrant,
+  pickFolder,
+  regrant,
+  type GrantStatus,
+} from './grant.ts'
 
 export interface DownloadState {
   modId: string
@@ -41,6 +58,14 @@ export interface LocalFileRequest {
 export type View = 'browse' | 'installed' | 'settings'
 
 class AppStore {
+  /**
+   * 'full'    — File System Access available: grant a folder, install/manage.
+   * 'catalog' — any other browser: browse/search/resolve fully; the final
+   *             install is replaced by a greenfield bundle (.zip) download.
+   */
+  mode = $state<'full' | 'catalog'>('full')
+  platform = $state<Platform>(detectPlatform())
+
   // Grant / boot
   status = $state<GrantStatus | 'boot' | 'opening'>('boot')
   grant = $state<GrantInfo | null>(null)
@@ -80,16 +105,35 @@ class AppStore {
   } | null>(null)
   localFileRequest = $state<LocalFileRequest | null>(null)
 
+  // Catalog mode: greenfield plan + bundle download state
+  catalogPlan = $state<Resolution | null>(null)
+  bundling = $state(false)
+  bundleDone = $state<{ filename: string; contents: { id: string; version: string }[] } | null>(
+    null,
+  )
+
   verifyResults = $state<Record<string, VerifyResult>>({})
+  /** Lazily-fetched readmes: undefined = not requested, null = none/failed. */
+  readmes = $state<Record<string, string | null | 'loading'>>({})
 
   private toybox: Toybox | null = null
   private handle: FileSystemDirectoryHandle | null = null
+  private catalogClient = new IndexClient()
 
   // ---------------------------------------------------------------------
   // Boot / grant
   // ---------------------------------------------------------------------
 
   async boot(): Promise<void> {
+    if (!fsaSupported()) {
+      // The whole app works — browse, search, resolve, review — only the
+      // final on-disk install is unavailable; installs become bundle
+      // downloads.
+      this.mode = 'catalog'
+      this.status = 'ready'
+      await this.refreshIndex()
+      return
+    }
     const { status, handle } = await initGrant()
     this.handle = handle
     this.status = status
@@ -130,6 +174,7 @@ class AppStore {
       this.recovery = recovery.recovered ? recovery : null
       this.settings = toybox.settings
       this.installed = toybox.installedMods()
+      this.platform = toybox.platform
       this.status = 'ready'
       await this.refreshIndex()
       void this.rescan()
@@ -144,18 +189,51 @@ class AppStore {
   // ---------------------------------------------------------------------
 
   async refreshIndex(): Promise<void> {
-    if (!this.toybox) return
     this.indexError = null
     try {
-      this.index = await this.toybox.refreshIndex()
+      this.index = this.toybox
+        ? await this.toybox.refreshIndex()
+        : await this.catalogClient.fetchIndex()
+      this.readmes = {}
     } catch (e) {
       this.indexError = (e as Error).message
     }
   }
 
   results(): SearchResult<CatalogMod>[] {
-    if (!this.toybox || !this.index) return []
-    return this.toybox.search(this.query)
+    if (!this.index) return []
+    return searchMods(this.index.mods, this.query)
+  }
+
+  /** Platform-eligible releases, newest first — works in both modes. */
+  releasesFor(mod: CatalogMod): CatalogRelease[] {
+    return eligibleReleases(mod, this.platform)
+  }
+
+  artifactRef(release: CatalogRelease): CatalogArtifact | null {
+    return artifactForPlatform(release, this.platform)
+  }
+
+  /** Kick off (or reuse) the lazy readme fetch for a mod. */
+  loadReadme(mod: CatalogMod): void {
+    if (this.readmes[mod.id] !== undefined) return
+    if (!mod.readmePath) {
+      this.readmes = { ...this.readmes, [mod.id]: null }
+      return
+    }
+    this.readmes = { ...this.readmes, [mod.id]: 'loading' }
+    const fetchIt = this.toybox
+      ? this.toybox.readmeFor(mod)
+      : this.catalogClient.fetchReadme(mod).catch(() => null)
+    void fetchIt.then((text) => {
+      this.readmes = { ...this.readmes, [mod.id]: text }
+    })
+  }
+
+  /** Catalog mode only: retarget the bundle at a different OS. */
+  setPlatform(platform: Platform): void {
+    this.platform = platform
+    this.invalidatePlan()
   }
 
   modById(id: string): CatalogMod | null {
@@ -242,6 +320,8 @@ class AppStore {
     this.planFailure = null
     this.applyDone = null
     this.applyError = null
+    this.catalogPlan = null
+    this.bundleDone = null
   }
 
   // ---------------------------------------------------------------------
@@ -324,6 +404,122 @@ class AppStore {
       this.applyError = (e as Error).message
     } finally {
       this.applying = false
+      this.applyPhase = null
+      this.download = null
+      this.fileProgress = null
+      this.localFileRequest = null
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Catalog mode: greenfield plan review + bundle download
+  // ---------------------------------------------------------------------
+
+  /** Resolve the cart greenfield (no installed state) for review. */
+  buildCatalogPlan(): void {
+    if (!this.index) return
+    this.planFailure = null
+    this.catalogPlan = null
+    this.bundleDone = null
+    const result = resolve(this.index, {
+      install: this.cartInstall.map((c) => ({
+        id: c.id,
+        ...(c.version !== undefined ? { range: `=${c.version}` } : {}),
+      })),
+      remove: [],
+      installed: {},
+      platform: this.platform,
+    })
+    if (result.ok) this.catalogPlan = result
+    else this.planFailure = result
+  }
+
+  catalogDownloadBytes(): number {
+    if (!this.catalogPlan || !this.index) return 0
+    let total = 0
+    for (const target of Object.values(this.catalogPlan.target)) {
+      const mod = this.index.mods.find((m) => m.id === target.id)
+      const release = mod?.releases.find((r) => r.version === target.version)
+      const artifact = release ? this.artifactRef(release) : null
+      total += artifact?.size ?? 0
+    }
+    return total
+  }
+
+  /**
+   * Build the greenfield bundle (verified end to end, exactly like an
+   * install) and hand it to the browser as a .zip download.
+   */
+  async downloadBundle(): Promise<void> {
+    if (!this.index || this.cartInstall.length === 0) return
+    this.bundling = true
+    this.applyError = null
+    this.bundleDone = null
+    try {
+      const result = await buildModBundle(
+        {
+          index: this.index,
+          select: this.cartInstall,
+          platform: this.platform,
+        },
+        {
+          manifestFor: (artifact) => this.catalogClient.fetchManifest(artifact).catch(() => null),
+          onEvent: (e) => {
+            switch (e.type) {
+              case 'phase':
+                this.applyPhase =
+                  e.phase === 'downloading'
+                    ? `Downloading ${e.modId}`
+                    : e.phase === 'packing'
+                      ? `Packing ${e.modId}`
+                      : `Verifying ${e.modId}`
+                if (e.phase !== 'downloading') this.download = null
+                break
+              case 'download':
+                this.download = {
+                  modId: e.modId,
+                  received: e.progress.bytesReceived,
+                  total: e.progress.totalBytes,
+                }
+                break
+              case 'file':
+                this.fileProgress = { modId: e.modId, path: e.path, index: 0, total: null }
+                break
+              case 'needs-local-file':
+                this.localFileRequest = {
+                  modId: e.modId,
+                  artifact: e.artifact,
+                  provide: (file) => {
+                    this.localFileRequest = null
+                    e.provide(file)
+                  },
+                  abort: (reason) => {
+                    this.localFileRequest = null
+                    e.abort(reason)
+                  },
+                }
+                break
+            }
+          },
+        },
+      )
+      if (!result.ok) {
+        this.planFailure = result
+        return
+      }
+      const url = URL.createObjectURL(result.blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = result.filename
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(url), 120_000)
+      this.bundleDone = { filename: result.filename, contents: result.contents }
+      this.cartInstall = []
+      this.catalogPlan = null
+    } catch (e) {
+      this.applyError = (e as Error).message
+    } finally {
+      this.bundling = false
       this.applyPhase = null
       this.download = null
       this.fileProgress = null

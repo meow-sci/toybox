@@ -33,6 +33,7 @@ export {
   ALL_PLATFORMS,
 } from './catalog/types.ts'
 export { IndexClient, DEFAULT_INDEX_URL } from './catalog/client.ts'
+export { searchMods, eligibleReleases, artifactForPlatform } from './catalog/select.ts'
 
 export type { ToyDir, ToyFile, ToyEntry, ToyWritable } from './fs/types.ts'
 export {
@@ -92,6 +93,14 @@ export {
   DownloadError,
   parseGithubReleaseUrl,
 } from './install/download.ts'
+export { buildModBundle } from './install/bundle.ts'
+export type {
+  BundleRequest,
+  BundleOptions,
+  BundleEvent,
+  BundleResult,
+  BundleOutcome,
+} from './install/bundle.ts'
 export type { AcquiredArtifact, DownloadProgress } from './install/download.ts'
 export { extractZipStream, ZipError } from './install/zip.ts'
 export type { ZipEntryResult, ZipSink, ZipFileWriter } from './install/zip.ts'

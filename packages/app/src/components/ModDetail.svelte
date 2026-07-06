@@ -7,7 +7,12 @@
 
   const mod = $derived(app.modById(modId))
   const installed = $derived(app.installedById(modId))
-  const releases = $derived(mod && app.engine ? app.engine.eligibleReleases(mod) : [])
+  const releases = $derived(mod ? app.releasesFor(mod) : [])
+  const readme = $derived(app.readmes[modId])
+
+  $effect(() => {
+    if (mod) app.loadReadme(mod)
+  })
 </script>
 
 <div
@@ -44,7 +49,7 @@
       <table class="releases">
         <tbody>
           {#each releases as rel (rel.version)}
-            {@const artifact = app.engine?.artifactFor(rel)}
+            {@const artifact = app.artifactRef(rel)}
             <tr>
               <td><strong>{rel.version}</strong></td>
               <td class="muted">{formatDate(rel.publishedAt)}</td>
@@ -88,9 +93,15 @@
         {/if}
       </div>
 
-      {#if mod.readme}
+      {#if mod.readmePath}
         <hr />
-        <Markdown source={mod.readme} />
+        {#if readme === 'loading' || readme === undefined}
+          <p class="muted">Loading readme…</p>
+        {:else if readme === null}
+          <p class="muted">The readme could not be loaded.</p>
+        {:else}
+          <Markdown source={readme} />
+        {/if}
       {/if}
     {/if}
   </div>

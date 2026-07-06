@@ -8,7 +8,7 @@
   import CartPanel from './components/CartPanel.svelte'
 
   let cartOpen = $state(false)
-  const active = $derived(app.status === 'ready' && app.grant !== null)
+  const active = $derived(app.status === 'ready' && (app.grant !== null || app.mode === 'catalog'))
 </script>
 
 {#if !active}
@@ -19,25 +19,36 @@
       <div class="brand">
         <span class="logo">🧸</span>
         <strong>toybox</strong>
-        <span class="muted">
-          {app.grantName}/{app.grant?.mode === 'ksa-root' ? 'mods' : ''}
-        </span>
-        {#if app.grant?.mode === 'mods-only'}
-          <span class="badge warn" title="Grant the Kitten Space Agency folder (the parent of mods/) to enable enable/disable via manifest.toml">
-            mods-only grant
+        {#if app.mode === 'catalog'}
+          <span
+            class="badge info"
+            title="This browser has no File System Access API, so toybox cannot install directly — selections become a verified .zip download instead."
+          >
+            browse mode
           </span>
+        {:else}
+          <span class="muted">
+            {app.grantName}/{app.grant?.mode === 'ksa-root' ? 'mods' : ''}
+          </span>
+          {#if app.grant?.mode === 'mods-only'}
+            <span class="badge warn" title="Grant the Kitten Space Agency folder (the parent of mods/) to enable enable/disable via manifest.toml">
+              mods-only grant
+            </span>
+          {/if}
         {/if}
       </div>
       <nav>
         <button class:active={app.view === 'browse'} onclick={() => (app.view = 'browse')}>
           Browse
         </button>
-        <button class:active={app.view === 'installed'} onclick={() => (app.view = 'installed')}>
-          Installed ({app.installed.length})
-        </button>
-        <button class:active={app.view === 'settings'} onclick={() => (app.view = 'settings')}>
-          Settings
-        </button>
+        {#if app.mode === 'full'}
+          <button class:active={app.view === 'installed'} onclick={() => (app.view = 'installed')}>
+            Installed ({app.installed.length})
+          </button>
+          <button class:active={app.view === 'settings'} onclick={() => (app.view = 'settings')}>
+            Settings
+          </button>
+        {/if}
       </nav>
       <button class="primary cart-btn" onclick={() => (cartOpen = !cartOpen)}>
         Cart {app.cartSize > 0 ? `(${app.cartSize})` : ''}
