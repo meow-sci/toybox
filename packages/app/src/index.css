@@ -1,0 +1,137 @@
+@import 'tailwindcss';
+@plugin 'tailwindcss-react-aria-components';
+
+/* ============================================================================
+   Design tokens — cat-cozy dark (default / no-JS fallback) + light theme.
+   The effective theme is stamped on <html data-theme="…"> by the pre-paint
+   script in index.html and kept in sync by src/state/theme.ts. Raw values
+   live on :root / [data-theme='light']; @theme inline maps them to Tailwind
+   utilities (bg-surface, text-fg-muted, ring-accent, …) that flip with the
+   attribute at runtime.
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces (back -> front) */
+  --tb-bg: #14161a;
+  --tb-surface: #1d2026;
+  --tb-surface-hover: #262a32;
+  --tb-overlay: #000000;
+
+  /* Borders */
+  --tb-border: #32363f;
+  --tb-border-strong: #444a56;
+
+  /* Foreground text */
+  --tb-fg: #e6e8ec;
+  --tb-fg-muted: #9aa0ac;
+
+  /* Accent */
+  --tb-accent: #7aa2f7;
+  --tb-accent-muted: #3d5a99;
+  --tb-accent-fg: #0c1222;
+
+  /* Semantic */
+  --tb-good: #9ece6a;
+  --tb-warn: #e0af68;
+  --tb-bad: #f7768e;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --tb-bg: #f4f5f7;
+  --tb-surface: #ffffff;
+  --tb-surface-hover: #e8eaef;
+  --tb-overlay: #3a3e48;
+
+  --tb-border: #d3d7df;
+  --tb-border-strong: #b6bcc8;
+
+  --tb-fg: #23262e;
+  --tb-fg-muted: #646b78;
+
+  --tb-accent: #3760c4;
+  --tb-accent-muted: #b7c8ef;
+  --tb-accent-fg: #ffffff;
+
+  --tb-good: #4d7f1f;
+  --tb-warn: #9a6a08;
+  --tb-bad: #c03256;
+}
+
+@theme inline {
+  --color-bg: var(--tb-bg);
+  --color-surface: var(--tb-surface);
+  --color-surface-hover: var(--tb-surface-hover);
+  --color-overlay: var(--tb-overlay);
+  --color-border: var(--tb-border);
+  --color-border-strong: var(--tb-border-strong);
+  --color-fg: var(--tb-fg);
+  --color-fg-muted: var(--tb-fg-muted);
+  --color-accent: var(--tb-accent);
+  --color-accent-muted: var(--tb-accent-muted);
+  --color-accent-fg: var(--tb-accent-fg);
+  --color-good: var(--tb-good);
+  --color-warn: var(--tb-warn);
+  --color-bad: var(--tb-bad);
+}
+
+body {
+  margin: 0;
+  background: var(--tb-bg);
+  color: var(--tb-fg);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+code {
+  font-family: ui-monospace, 'Cascadia Code', 'JetBrains Mono', monospace;
+  font-size: 0.92em;
+  background: var(--tb-surface);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+/* ============================================================================
+   Sanitized-markdown readme content (element selectors — the HTML comes from
+   marked+DOMPurify, so utility classes can't be attached per element).
+   ========================================================================== */
+.markdown h1 {
+  font-size: 1.4em;
+  border-bottom: 1px solid var(--tb-border);
+  padding-bottom: 6px;
+}
+.markdown h2 {
+  font-size: 1.15em;
+  margin-top: 1.4em;
+}
+.markdown pre {
+  background: var(--tb-bg);
+  border: 1px solid var(--tb-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+}
+.markdown pre code {
+  background: none;
+  padding: 0;
+}
+.markdown a {
+  color: var(--tb-accent);
+}
+.markdown img {
+  max-width: 100%;
+}
+.markdown blockquote {
+  border-left: 3px solid var(--tb-border);
+  margin-left: 0;
+  padding-left: 12px;
+  color: var(--tb-fg-muted);
+}

@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@types/node": "26.1.0",
+    "eslint-plugin-react-hooks": "7.1.1",
     "oxfmt": "0.56.0",
     "oxlint": "1.71.0",
     "typescript": "6.0.3"
