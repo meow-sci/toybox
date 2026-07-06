@@ -6,6 +6,7 @@
   import SettingsView from './components/SettingsView.svelte'
   import ModDetail from './components/ModDetail.svelte'
   import CartPanel from './components/CartPanel.svelte'
+  import ThemeToggle from './components/ThemeToggle.svelte'
 
   let cartOpen = $state(false)
   const active = $derived(app.status === 'ready' && (app.grant !== null || app.mode === 'catalog'))
@@ -17,7 +18,7 @@
   <div class="shell">
     <header>
       <div class="brand">
-        <span class="logo">🧸</span>
+        <span class="logo">🧶</span>
         <strong>toybox</strong>
         {#if app.mode === 'catalog'}
           <span
@@ -50,6 +51,7 @@
           </button>
         {/if}
       </nav>
+      <ThemeToggle />
       <button class="primary cart-btn" onclick={() => (cartOpen = !cartOpen)}>
         Cart {app.cartSize > 0 ? `(${app.cartSize})` : ''}
       </button>

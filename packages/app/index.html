@@ -8,6 +8,26 @@
       name="description"
       content="Browser-only mod manager for Kitten Space Agency. No install, no backend — your mods folder is the database."
     />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧶</text></svg>"
+    />
+    <script>
+      // Stamp the effective theme before first paint (no flash of the wrong
+      // theme). Keep in sync with src/lib/theme.svelte.ts: a 'light'/'dark'
+      // override lives at localStorage['toybox.theme']; a missing key means
+      // "follow the system".
+      ;(() => {
+        let t = null
+        try {
+          t = localStorage.getItem('toybox.theme')
+        } catch {}
+        if (t !== 'light' && t !== 'dark') {
+          t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        }
+        document.documentElement.dataset.theme = t
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>
