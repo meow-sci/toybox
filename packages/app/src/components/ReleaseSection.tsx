@@ -1,5 +1,11 @@
 import { useStore } from '@nanostores/react'
-import type { CatalogRelease, CatalogReference, InstalledMod, Platform } from '@toybox/core'
+import type {
+  CatalogArtifact,
+  CatalogRelease,
+  CatalogReference,
+  InstalledMod,
+  Platform,
+} from '@toybox/core'
 import { formatBytes, formatDate } from '../lib/format.ts'
 import { $manifests, addInstall, artifactRef, loadManifest } from '../state/appStore.ts'
 import { Badge, Button, Disclosure, DisclosurePanel, DisclosureTrigger, Tag } from '../ui/kit'
@@ -34,26 +40,30 @@ function ReferenceList({
   )
 }
 
-function ManifestTable({ release, platform }: { release: CatalogRelease; platform: Platform }) {
+/**
+ * One collapsed manifest disclosure per artifact — NOT gated on the host
+ * platform (release visibility is OS-agnostic, so the manifests are too).
+ */
+function ManifestSection({ artifact, showKey }: { artifact: CatalogArtifact; showKey: boolean }) {
   const manifests = useStore($manifests)
-  const artifact = artifactRef(release, platform)
-  const manifest = artifact ? manifests[artifact.sha256] : null
+  const manifest = manifests[artifact.sha256]
 
   return (
     <Disclosure
       standalone
       onExpandedChange={(expanded) => {
-        if (expanded && artifact) loadManifest(artifact)
+        if (expanded) loadManifest(artifact)
       }}
     >
       <DisclosureTrigger className="py-1">
         <strong>File manifest</strong>
-        {artifact?.fileCount !== undefined && (
+        {showKey && <Tag>{artifact.key}</Tag>}
+        {artifact.fileCount !== undefined && (
           <span className="text-fg-muted">({artifact.fileCount} files)</span>
         )}
       </DisclosureTrigger>
       <DisclosurePanel>
-        {!artifact || manifest === null ? (
+        {manifest === null ? (
           <p className="my-0 text-[13px] text-fg-muted">No per-file manifest is published.</p>
         ) : manifest === 'loading' || manifest === undefined ? (
           <p className="my-0 text-[13px] text-fg-muted">Loading manifest…</p>
@@ -155,7 +165,11 @@ export function ReleaseSection({
             )}
           </div>
 
-          <ManifestTable release={release} platform={platform} />
+          <div className="flex flex-col">
+            {release.artifacts.map((a) => (
+              <ManifestSection key={a.key} artifact={a} showKey={release.artifacts.length > 1} />
+            ))}
+          </div>
 
           <ReferenceList title="Required" marker="◆" refs={release.required} />
           <ReferenceList title="Recommended" marker="◇" refs={release.recommends} />

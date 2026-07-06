@@ -22,9 +22,8 @@ export interface DisclosureKitProps extends DisclosureProps {
 }
 
 export function Disclosure({ standalone, className, ...props }: DisclosureKitProps) {
-  const disclosure = (
-    <AriaDisclosure {...props} className={composeTw('group/disclosure', className)} />
-  )
+  const disclosure = <AriaDisclosure {...props} className={composeTw('', className)} />
+
   if (!standalone) return disclosure
   return (
     <DisclosureGroupStateContext.Provider value={null}>
@@ -44,7 +43,11 @@ export function DisclosureTrigger({ className, children, ...props }: ButtonProps
       slot="trigger"
       {...props}
       className={composeTw(
-        'flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md py-2 text-left text-fg outline-none hover:bg-surface-hover/60 focus-visible:outline-2 focus-visible:outline-accent',
+        // The chevron keys off THIS button's own aria-expanded (group/trigger)
+        // rather than the Disclosure root's data-expanded: trigger buttons are
+        // never nested inside each other, so nested disclosures (e.g. the file
+        // manifest inside a release) rotate independently of their parent.
+        'group/trigger flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md py-2 text-left text-fg outline-none hover:bg-surface-hover/60 focus-visible:outline-2 focus-visible:outline-accent',
         className,
       )}
     >
@@ -52,7 +55,7 @@ export function DisclosureTrigger({ className, children, ...props }: ButtonProps
         <>
           <ChevronRight
             size={14}
-            className="shrink-0 text-fg-muted transition-transform group-expanded/disclosure:rotate-90"
+            className="shrink-0 text-fg-muted transition-transform group-aria-expanded/trigger:rotate-90"
           />
           {typeof children === 'function' ? children(rp) : children}
         </>
