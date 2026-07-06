@@ -312,9 +312,15 @@ export function loadManifest(artifact: CatalogArtifact): void {
   })
 }
 
-/** Catalog mode only: retarget the bundle at a different OS. */
+/**
+ * Retarget artifact selection at a different platform. Detection is only a
+ * GUESS at a sensible default — the mods folder's platform belongs to the
+ * game install, not the browser (Proton, shared drives, bundles for
+ * friends) — so the user may pick any platform in both modes.
+ */
 export function setPlatform(platform: Platform): void {
   $platform.set(platform)
+  toybox?.setPlatform(platform)
   invalidatePlan()
 }
 
@@ -378,6 +384,16 @@ export function addInstall(id: string, version?: string): void {
   const rest = $cartInstall.get().filter((c) => c.id !== id)
   $cartInstall.set([...rest, { id, ...(version !== undefined ? { version } : {}) }])
   invalidatePlan()
+}
+
+/**
+ * Stage an install explicitly targeted at `platform` (the split-button
+ * dropdown). The cart has ONE target platform — a mods folder serves one
+ * game install — so this retargets the whole cart and stages the item.
+ */
+export function addInstallFor(id: string, platform: Platform, version?: string): void {
+  setPlatform(platform)
+  addInstall(id, version)
 }
 
 export function addRemove(id: string): void {

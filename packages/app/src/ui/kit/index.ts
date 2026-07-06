@@ -12,6 +12,8 @@ export {
   type TextFieldKitProps,
 } from './TextField'
 export { Select, type SelectKitProps, type SelectOption } from './Select'
+export { Menu, MenuItem, MenuTrigger, Popover, type MenuItemKitProps } from './Menu'
+export { SplitButton, type SplitButtonItem, type SplitButtonProps } from './SplitButton'
 export { Checkbox, type CheckboxKitProps } from './Checkbox'
 export { Dialog, Modal, type ModalKitProps } from './Modal'
 export { Disclosure, DisclosureGroup, DisclosurePanel, DisclosureTrigger } from './Disclosure'

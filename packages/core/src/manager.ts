@@ -113,7 +113,13 @@ export class Toybox {
   private client: IndexClient
   grant: GrantInfo = { mode: 'mods-only', manifestSync: false }
 
-  readonly platform: Platform
+  /**
+   * The platform artifacts are selected for. Initialized from OS detection,
+   * but retargetable via {@link setPlatform}: the mods folder's platform is
+   * a property of the GAME INSTALL, not of the browser (e.g. a Linux browser
+   * managing a Windows game run under Proton wants windows artifacts).
+   */
+  platform: Platform
   private readonly fetchFn: typeof fetch
   private readonly now: () => string
 
@@ -230,6 +236,11 @@ export class Toybox {
   /** Fuzzy search across id/name/summary/tags/authors. */
   search(query: string): SearchResult<CatalogMod>[] {
     return searchMods(this.requireIndex().mods, query)
+  }
+
+  /** Retarget artifact selection at a different platform (see {@link platform}). */
+  setPlatform(platform: Platform): void {
+    this.platform = platform
   }
 
   /** Releases of a mod eligible for this platform, newest first. */

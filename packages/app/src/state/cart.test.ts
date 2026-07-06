@@ -5,11 +5,13 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
+  $platform,
   $cartInstall,
   $cartRemove,
   $cartSize,
   $planned,
   addInstall,
+  addInstallFor,
   addRemove,
   clearCart,
   dropFromCart,
@@ -60,5 +62,21 @@ describe('cart staging', () => {
     $planned.set({} as never)
     addInstall('x')
     expect($planned.get()).toBeNull()
+  })
+})
+
+describe('platform-targeted staging (split button)', () => {
+  it('addInstallFor retargets the cart platform and stages the item', () => {
+    $platform.set('linux')
+    addInstallFor('gatOS', 'windows', '1.1.0')
+    expect($platform.get()).toBe('windows')
+    expect($cartInstall.get()).toEqual([{ id: 'gatOS', version: '1.1.0' }])
+  })
+
+  it('retargeting invalidates a previously built plan', () => {
+    $planned.set({} as never)
+    addInstallFor('gatOS', 'macos')
+    expect($planned.get()).toBeNull()
+    expect($platform.get()).toBe('macos')
   })
 })

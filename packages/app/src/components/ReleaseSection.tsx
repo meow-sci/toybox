@@ -1,14 +1,21 @@
 import { useStore } from '@nanostores/react'
-import type {
-  CatalogArtifact,
-  CatalogRelease,
-  CatalogReference,
-  InstalledMod,
-  Platform,
+import {
+  ALL_PLATFORMS,
+  type CatalogArtifact,
+  type CatalogRelease,
+  type CatalogReference,
+  type InstalledMod,
+  type Platform,
 } from '@toybox/core'
 import { formatBytes, formatDate } from '../lib/format.ts'
-import { $manifests, addInstall, artifactRef, loadManifest } from '../state/appStore.ts'
-import { Badge, Button, Disclosure, DisclosurePanel, DisclosureTrigger, Tag } from '../ui/kit'
+import { $manifests, addInstallFor, artifactRef, loadManifest } from '../state/appStore.ts'
+import { Badge, Disclosure, DisclosurePanel, DisclosureTrigger, SplitButton, Tag } from '../ui/kit'
+
+/** Platforms this release ships artifacts for, in canonical order. */
+function supportedPlatforms(release: CatalogRelease): Platform[] {
+  const covered = new Set(release.artifacts.flatMap((a) => a.platforms))
+  return ALL_PLATFORMS.filter((p) => covered.has(p))
+}
 
 function ReferenceList({
   title,
@@ -109,6 +116,10 @@ export function ReleaseSection({
 }) {
   const artifact = artifactRef(release, platform)
   const isCurrent = installedMod?.version === release.version
+  const supported = supportedPlatforms(release)
+  // Sensible default: the detected platform when this release supports it,
+  // otherwise the first platform it does ship for.
+  const defaultTarget = supported.includes(platform) ? platform : (supported[0] ?? platform)
 
   return (
     <Disclosure id={release.version} className="border-t border-border">
@@ -121,17 +132,21 @@ export function ReleaseSection({
         </DisclosureTrigger>
         {isCurrent ? (
           <span className="text-fg-muted">current</span>
-        ) : artifact ? (
-          <Button size="sm" onPress={() => addInstall(modId, release.version)}>
-            {installedMod ? 'switch to' : 'add to cart'}
-          </Button>
         ) : (
-          <span
-            className="text-xs whitespace-nowrap text-fg-muted"
-            title={`This release ships no artifact for ${platform}; it cannot be installed on this OS.`}
+          <SplitButton
+            size="sm"
+            menuLabel="Choose install platform"
+            onPress={() => addInstallFor(modId, defaultTarget, release.version)}
+            onAction={(p) => addInstallFor(modId, p as Platform, release.version)}
+            items={supported.map((p) => ({
+              id: p,
+              label: p === platform ? `for ${p} (detected)` : `for ${p}`,
+              checked: p === defaultTarget,
+            }))}
           >
-            no {platform} build
-          </span>
+            {installedMod ? 'switch to' : 'add to cart'}
+            {defaultTarget !== platform && <span className="text-fg-muted">({defaultTarget})</span>}
+          </SplitButton>
         )}
       </div>
 

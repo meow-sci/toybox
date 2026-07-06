@@ -153,11 +153,11 @@ export function CartPanel({ onClose }: { onClose: () => void }) {
               ))}
             </ul>
 
-            {mode === 'catalog' && cartInstall.length > 0 && (
+            {cartInstall.length > 0 && (
               <div className="my-1.5 mb-2.5 flex items-center gap-2">
-                <Label>Bundle for</Label>
+                <Label>{mode === 'catalog' ? 'Bundle for' : 'Target platform'}</Label>
                 <Select
-                  aria-label="Bundle platform"
+                  aria-label="Target platform"
                   options={ALL_PLATFORMS.map((p) => ({ id: p, label: p }))}
                   selectedKey={platform}
                   onSelectionChange={(key) => setPlatform(key as Platform)}
