@@ -5,7 +5,7 @@
  * The app still browses, resolves, and verifies exactly as on Chromium; it
  * just cannot write into the mods folder. Instead, the user's selection is
  * resolved greenfield (empty installed set — required dependencies are
- * pulled in, optional ones are not), every artifact is downloaded and
+ * pulled in, recommends are not), every artifact is downloaded and
  * digest-verified, and the mod folders are re-packaged into ONE zip the
  * browser downloads. Extracting that zip into
  * `Documents/My Games/Kitten Space Agency/mods/` yields exactly what a

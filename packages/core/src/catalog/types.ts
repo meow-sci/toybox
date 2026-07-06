@@ -63,20 +63,25 @@ export interface CatalogRelease {
    * registration (the vendoring convention: `mods/<slug>/readmes/<version>.md`).
    */
   readmePath?: string
-  dependencies: CatalogDependency[]
+  /** Hard dependencies — the resolver refuses to install without them. */
+  required: CatalogReference[]
+  /**
+   * Soft suggestions — surfaced in the UI, never forced. Disallowed entries
+   * (per the target mod's who_can_reference) were already filtered out when
+   * the index was compiled.
+   */
+  recommends: CatalogReference[]
   conflicts: CatalogConflict[]
   artifacts: CatalogArtifact[]
 }
 
-export interface CatalogDependency {
+/** A rich reference to another mod (used by both required and recommends). */
+export interface CatalogReference {
   id: string
   /** Semver range; "*" = any. */
   range: string
-  /**
-   * Mirrors StarMap's Optional flag: an optional dependency never *has* to
-   * be installed, but when it is installed its version must satisfy `range`.
-   */
-  optional: boolean
+  /** Publisher-authored, human-readable "why" for this reference. */
+  description?: string
 }
 
 export interface CatalogConflict {
@@ -244,8 +249,11 @@ function parseRelease(v: unknown, what: string, modId: string): CatalogRelease {
   if (!isRecord(v)) throw new IndexValidationError(`${what} must be an object`)
   const version = str(v.version, `${what}.version`)
   const channel = v.channel === 'prerelease' ? 'prerelease' : 'stable'
-  const deps = Array.isArray(v.dependencies)
-    ? v.dependencies.map((d, i) => parseDependency(d, `${what}.dependencies[${i}]`))
+  const required = Array.isArray(v.required)
+    ? v.required.map((d, i) => parseReference(d, `${what}.required[${i}]`))
+    : []
+  const recommends = Array.isArray(v.recommends)
+    ? v.recommends.map((d, i) => parseReference(d, `${what}.recommends[${i}]`))
     : []
   const conflicts = Array.isArray(v.conflicts)
     ? v.conflicts.map((c, i) => parseConflict(c, `${what}.conflicts[${i}]`))
@@ -271,18 +279,21 @@ function parseRelease(v: unknown, what: string, modId: string): CatalogRelease {
     ...(optStr(v.readmePath, `${what}.readmePath`) !== undefined
       ? { readmePath: v.readmePath as string }
       : {}),
-    dependencies: deps,
+    required,
+    recommends,
     conflicts,
     artifacts,
   }
 }
 
-function parseDependency(v: unknown, what: string): CatalogDependency {
+function parseReference(v: unknown, what: string): CatalogReference {
   if (!isRecord(v)) throw new IndexValidationError(`${what} must be an object`)
   return {
     id: validateModId(str(v.id, `${what}.id`)),
     range: str(v.range ?? '*', `${what}.range`),
-    optional: v.optional === true,
+    ...(optStr(v.description, `${what}.description`) !== undefined
+      ? { description: v.description as string }
+      : {}),
   }
 }
 

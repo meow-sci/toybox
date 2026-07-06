@@ -58,6 +58,14 @@ export interface LocalFileRequest {
 
 export type View = 'browse' | 'installed' | 'settings'
 
+/** A recommendation surfaced by a plan: `from` recommends `id`, not selected. */
+export interface RecommendHint {
+  from: string
+  id: string
+  range: string
+  description?: string
+}
+
 class AppStore {
   /**
    * 'full'    — File System Access available: grant a folder, install/manage.
@@ -451,6 +459,31 @@ class AppStore {
     })
     if (result.ok) this.catalogPlan = result
     else this.planFailure = result
+  }
+
+  /**
+   * Recommends surfaced by a plan: mods in the target set recommend these,
+   * but they are neither in the plan nor installed. Never enforced — just
+   * shown so the user can add them deliberately.
+   */
+  recommendHints(resolution: Resolution | null): RecommendHint[] {
+    if (!resolution || !this.index) return []
+    const present = new Set(Object.keys(resolution.target).map((k) => k.toLowerCase()))
+    for (const m of this.installed) present.add(m.id.toLowerCase())
+    const hints: RecommendHint[] = []
+    const seen = new Set<string>()
+    for (const t of Object.values(resolution.target)) {
+      const mod = this.index.mods.find((m) => m.id === t.id)
+      const release = mod?.releases.find((r) => r.version === t.version)
+      for (const rec of release?.recommends ?? []) {
+        const key = rec.id.toLowerCase()
+        if (present.has(key) || seen.has(key)) continue
+        if (!this.index.mods.some((m) => m.id.toLowerCase() === key)) continue
+        seen.add(key)
+        hints.push({ from: t.id, ...rec })
+      }
+    }
+    return hints
   }
 
   catalogDownloadBytes(): number {

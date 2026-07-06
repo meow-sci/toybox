@@ -19,7 +19,7 @@ export type {
   ToyboxIndex,
   CatalogMod,
   CatalogRelease,
-  CatalogDependency,
+  CatalogReference,
   CatalogConflict,
   CatalogArtifact,
   ArtifactManifest,

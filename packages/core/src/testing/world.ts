@@ -65,7 +65,13 @@ export function buildWorld() {
       'gatOS',
       [
         release('1.1.0', [g110art], {
-          dependencies: [{ id: 'purrTTY', range: '^1.0', optional: true }],
+          recommends: [
+            {
+              id: 'purrTTY',
+              range: '^1.0',
+              description: 'Terminal sessions open inside purrTTY windows when it is installed.',
+            },
+          ],
         }),
       ],
       { summary: 'Alpine Linux in a QEMU microVM', tags: ['linux', 'telemetry'] },

@@ -72,7 +72,8 @@ export function release(
   return {
     version,
     channel: 'stable',
-    dependencies: [],
+    required: [],
+    recommends: [],
     conflicts: [],
     artifacts,
     ...opts,

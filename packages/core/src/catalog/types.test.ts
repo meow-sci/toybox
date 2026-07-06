@@ -16,7 +16,8 @@ const validIndex = {
         {
           version: '1.1.0',
           channel: 'stable',
-          dependencies: [],
+          required: [],
+          recommends: [],
           artifacts: [
             {
               key: 'universal',
@@ -38,6 +39,31 @@ describe('parseIndex', () => {
   it('parses a valid index and expands platform wildcards', () => {
     const idx = parseIndex(validIndex)
     expect(idx.mods[0]!.releases[0]!.artifacts[0]!.platforms).toEqual(['windows', 'linux', 'macos'])
+  })
+
+  it('parses required and recommends references with descriptions', () => {
+    const doc = structuredClone(validIndex)
+    const rel = doc.mods[0]!.releases[0]! as Record<string, unknown>
+    rel.required = [{ id: 'Lib', range: '^2.0', description: 'core physics' }]
+    rel.recommends = [{ id: 'Extra' }]
+    const parsed = parseIndex(doc).mods[0]!.releases[0]!
+    expect(parsed.required).toEqual([{ id: 'Lib', range: '^2.0', description: 'core physics' }])
+    expect(parsed.recommends).toEqual([{ id: 'Extra', range: '*' }])
+  })
+
+  it('defaults missing required/recommends to empty arrays', () => {
+    const doc = structuredClone(validIndex)
+    delete (doc.mods[0]!.releases[0]! as Record<string, unknown>).required
+    delete (doc.mods[0]!.releases[0]! as Record<string, unknown>).recommends
+    const parsed = parseIndex(doc).mods[0]!.releases[0]!
+    expect(parsed.required).toEqual([])
+    expect(parsed.recommends).toEqual([])
+  })
+
+  it('rejects references with malformed mod ids', () => {
+    const doc = structuredClone(validIndex)
+    ;(doc.mods[0]!.releases[0]! as Record<string, unknown>).required = [{ id: '../evil' }]
+    expect(() => parseIndex(doc)).toThrow(/bad mod id/)
   })
 
   it('parses the per-release readme snapshot path', () => {
