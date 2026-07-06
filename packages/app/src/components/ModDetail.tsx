@@ -1,7 +1,6 @@
 import { useStore } from '@nanostores/react'
 import { useEffect } from 'react'
 import { X } from 'lucide-react'
-import { formatBytes, formatDate } from '../lib/format.ts'
 import {
   $cartInstall,
   $cartRemove,
@@ -11,7 +10,6 @@ import {
   $readmes,
   addInstall,
   addRemove,
-  artifactRef,
   dropFromCart,
   inCart,
   installedById,
@@ -20,8 +18,9 @@ import {
   modById,
   releasesFor,
 } from '../state/appStore.ts'
-import { Badge, Button, Dialog, Link, Modal, Tag } from '../ui/kit'
+import { Badge, Button, Dialog, DisclosureGroup, Link, Modal } from '../ui/kit'
 import { Markdown } from './Markdown.tsx'
+import { ReleaseSection } from './ReleaseSection.tsx'
 
 export function ModDetail({ modId, onClose }: { modId: string; onClose: () => void }) {
   const index = useStore($index)
@@ -104,46 +103,21 @@ export function ModDetail({ modId, onClose }: { modId: string; onClose: () => vo
             </div>
 
             <h3 className="mt-5 mb-2 font-semibold">Releases</h3>
-            <div className="flex flex-col">
-              {releases.map((rel) => {
-                const artifact = artifactRef(rel, platform)
-                return (
-                  <div
-                    key={rel.version}
-                    className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border py-2"
-                  >
-                    <strong>{rel.version}</strong>
-                    <span className="text-fg-muted">{formatDate(rel.publishedAt)}</span>
-                    <span className="flex flex-wrap items-center gap-1.5">
-                      {rel.channel === 'prerelease' && <Badge tone="warn">prerelease</Badge>}
-                      {rel.ksa && <Tag>KSA {rel.ksa}</Tag>}
-                      {rel.required.map((ref) => (
-                        <Tag key={ref.id} title={ref.description ?? 'required'}>
-                          ◆ {ref.id} {ref.range}
-                        </Tag>
-                      ))}
-                      {rel.recommends.map((ref) => (
-                        <Tag key={ref.id} title={ref.description ?? 'recommended'}>
-                          ◇ {ref.id} {ref.range}
-                        </Tag>
-                      ))}
-                    </span>
-                    <span className="ml-auto flex items-center gap-2">
-                      <span className="text-fg-muted">
-                        {artifact ? formatBytes(artifact.size) : '—'}
-                      </span>
-                      {installedMod?.version === rel.version ? (
-                        <span className="text-fg-muted">current</span>
-                      ) : (
-                        <Button size="sm" onPress={() => addInstall(mod.id, rel.version)}>
-                          {installedMod ? 'switch to' : 'add to cart'}
-                        </Button>
-                      )}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
+            <DisclosureGroup
+              allowsMultipleExpanded
+              defaultExpandedKeys={releases[0] ? [releases[0].version] : []}
+            >
+              {releases.map((rel, i) => (
+                <ReleaseSection
+                  key={rel.version}
+                  modId={mod.id}
+                  release={rel}
+                  platform={platform}
+                  isLatest={i === 0}
+                  installedMod={installedMod}
+                />
+              ))}
+            </DisclosureGroup>
 
             <div className="mt-3.5 flex flex-wrap gap-2.5">
               {carted ? (

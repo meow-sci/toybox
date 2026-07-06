@@ -22,6 +22,7 @@ import {
   resolve,
   searchMods,
   type ApplyEvent,
+  type ArtifactManifest,
   type CartItem,
   type CatalogArtifact,
   type CatalogMod,
@@ -134,6 +135,11 @@ export const $bundleDone = atom<{
 export const $verifyResults = atom<Record<string, VerifyResult>>({})
 /** Lazily-fetched readmes: undefined = not requested, null = none/failed. */
 export const $readmes = atom<Record<string, string | null | 'loading'>>({})
+/**
+ * Lazily-fetched per-file artifact manifests, keyed by the artifact's
+ * sha256: undefined = not requested, null = none published / failed.
+ */
+export const $manifests = atom<Record<string, ArtifactManifest | null | 'loading'>>({})
 export const $manifestEnabled = atom<Record<string, boolean>>({})
 
 // Derived
@@ -277,6 +283,23 @@ export function loadReadme(mod: CatalogMod): void {
   const fetchIt = toybox ? toybox.readmeFor(mod) : catalogClient.fetchReadme(mod).catch(() => null)
   void fetchIt.then((text) => {
     $readmes.set({ ...$readmes.get(), [mod.id]: text })
+  })
+}
+
+/** Kick off (or reuse) the lazy per-file manifest fetch for an artifact. */
+export function loadManifest(artifact: CatalogArtifact): void {
+  const key = artifact.sha256
+  if ($manifests.get()[key] !== undefined) return
+  if (!artifact.manifest) {
+    $manifests.set({ ...$manifests.get(), [key]: null })
+    return
+  }
+  $manifests.set({ ...$manifests.get(), [key]: 'loading' })
+  const fetchIt = toybox
+    ? toybox.manifestFor(artifact)
+    : catalogClient.fetchManifest(artifact).catch(() => null)
+  void fetchIt.then((manifest) => {
+    $manifests.set({ ...$manifests.get(), [key]: manifest })
   })
 }
 

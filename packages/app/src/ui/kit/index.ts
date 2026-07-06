@@ -14,6 +14,7 @@ export {
 export { Select, type SelectKitProps, type SelectOption } from './Select'
 export { Checkbox, type CheckboxKitProps } from './Checkbox'
 export { Dialog, Modal, type ModalKitProps } from './Modal'
+export { Disclosure, DisclosureGroup, DisclosurePanel, DisclosureTrigger } from './Disclosure'
 export { ProgressBar } from './ProgressBar'
 export { Badge, Tag, badge, type BadgeProps } from './Badge'
 
