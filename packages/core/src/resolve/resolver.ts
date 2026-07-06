@@ -15,10 +15,11 @@
  *  3. Deterministic: candidate versions are tried newest-first (stable
  *     before prerelease unless the caller opts in), so results are
  *     reproducible from (index, request) alone.
- *  4. Optional dependencies are never auto-installed, but when the target
- *     mod IS present its version must satisfy the range (StarMap semantics:
- *     optional-missing loads fine; optional-present shares assemblies, so a
- *     wrong version is a real problem).
+ *  4. Only `required` references drive resolution. `recommends` are never
+ *     auto-installed — they surface in the UI — but when a recommended mod
+ *     IS present its version should satisfy the range (StarMap semantics:
+ *     optional-present shares assemblies, so a wrong version is a real
+ *     problem), which is reported as a post-solve warning.
  *
  * The search is exhaustive backtracking over a small domain (a KSA mod set
  * is tens of mods, each with a handful of versions), collecting the reasons
@@ -110,7 +111,8 @@ export interface Requirement {
   requiredBy: string
   /** Chain from the root request down to this requirement, for display. */
   chain: string[]
-  optional: boolean
+  /** Publisher-authored "why" carried from the catalog reference. */
+  description?: string
 }
 
 export interface Rejection {
@@ -145,7 +147,6 @@ export function resolve(index: ToyboxIndex, request: ResolveRequest): ResolveRes
       range: req.range ?? '*',
       requiredBy: 'user',
       chain: [],
-      optional: false,
     })
   }
   for (const [id, info] of Object.entries(request.installed)) {
@@ -158,7 +159,6 @@ export function resolve(index: ToyboxIndex, request: ResolveRequest): ResolveRes
       range: policy === 'keep' ? `=${info.version}` : '*',
       requiredBy: info.autoInstalled ? 'installed-auto' : 'installed',
       chain: [],
-      optional: false,
     })
   }
 
@@ -228,7 +228,7 @@ export function resolve(index: ToyboxIndex, request: ResolveRequest): ResolveRes
     const [req, ...rest] = queue as [Requirement, ...Requirement[]]
     const key = req.id.toLowerCase()
 
-    if (removeSet.has(key) && !req.optional) {
+    if (removeSet.has(key)) {
       return {
         requirement: req,
         rejections: [
@@ -239,7 +239,6 @@ export function resolve(index: ToyboxIndex, request: ResolveRequest): ResolveRes
         ],
       }
     }
-    if (removeSet.has(key) && req.optional) return solve(rest)
 
     const existing = chosen.get(key)
     if (existing) {
@@ -294,17 +293,11 @@ export function resolve(index: ToyboxIndex, request: ResolveRequest): ResolveRes
 
     const mod = mods.get(key)
     if (!mod) {
-      if (req.optional) return solve(rest)
       return {
         requirement: req,
         rejections: [{ version: '(none)', reason: `"${req.id}" is not in the index` }],
       }
     }
-
-    // Optional dependencies do not force installation — but if the mod is
-    // already going to be present we handled it above; here it is absent, so
-    // just skip (StarMap loads fine without it).
-    if (req.optional) return solve(rest)
 
     const { candidates, rejections } = eligibility(mod)
     const tried: Rejection[] = [...rejections]
@@ -345,18 +338,18 @@ export function resolve(index: ToyboxIndex, request: ResolveRequest): ResolveRes
   const warnings: ResolutionWarning[] = []
   pruneOrphans(chosen)
 
-  // Optional-dependency version check: if both sides are present, the
-  // optional range must hold (assembly sharing makes mismatches real bugs).
+  // Recommends version check: a recommended mod is never forced in, but if
+  // both sides are present the range should hold (assembly sharing makes
+  // mismatches real bugs).
   for (const [, { candidate }] of chosen) {
-    for (const dep of candidate.release.dependencies) {
-      if (!dep.optional) continue
-      const target = chosen.get(dep.id.toLowerCase())
-      if (target && !rangeSatisfied(target.candidate.release.version, dep.range)) {
+    for (const rec of candidate.release.recommends) {
+      const target = chosen.get(rec.id.toLowerCase())
+      if (target && !rangeSatisfied(target.candidate.release.version, rec.range)) {
         warnings.push({
-          id: dep.id,
+          id: rec.id,
           message:
-            `${candidate.mod.id}@${candidate.release.version} optionally uses ` +
-            `${dep.id} ${dep.range}, but ${target.candidate.release.version} is selected — ` +
+            `${candidate.mod.id}@${candidate.release.version} recommends ` +
+            `${rec.id} ${rec.range}, but ${target.candidate.release.version} is selected — ` +
             'they may not work together',
         })
       }
@@ -398,7 +391,9 @@ function describeNestedProblem(out: Problem): string {
     .join('; ')
   return (
     `needs ${out.requirement.id} ${out.requirement.range} ` +
-    `(required by ${describeRequirer(out.requirement)}) which is unsatisfiable — ${inner}`
+    `(required by ${describeRequirer(out.requirement)}` +
+    (out.requirement.description ? ` — ${out.requirement.description}` : '') +
+    `) which is unsatisfiable — ${inner}`
   )
 }
 
@@ -409,16 +404,13 @@ function dependencyRequirements(
 ): Requirement[] {
   const self = `${cand.mod.id}@${cand.release.version}`
   const out: Requirement[] = []
-  for (const dep of cand.release.dependencies) {
-    // Optional deps become real constraints only when the target is chosen
-    // or catalogued-and-chosen later; enqueue them regardless — solve()
-    // skips absent optionals but validates present ones.
+  for (const dep of cand.release.required) {
     out.push({
       id: dep.id,
       range: dep.range,
       requiredBy: self,
       chain: [...(chosen.get(cand.mod.id.toLowerCase())?.reasons[0]?.chain ?? []), self],
-      optional: dep.optional,
+      ...(dep.description !== undefined ? { description: dep.description } : {}),
     })
     void mods
   }
@@ -471,7 +463,7 @@ function pruneOrphans(chosen: Map<string, { candidate: Candidate; reasons: Requi
       const stillNeeded = [...chosen.values()].some(
         (c) =>
           c.candidate.mod.id !== candidate.mod.id &&
-          c.candidate.release.dependencies.some((d) => !d.optional && d.id.toLowerCase() === key),
+          c.candidate.release.required.some((d) => d.id.toLowerCase() === key),
       )
       if (!stillNeeded) {
         chosen.delete(key)
@@ -531,6 +523,7 @@ function explain(problems: Problem[]): string {
     lines.push(
       `Cannot satisfy: ${req.id} ${req.range === '*' ? '(any version)' : req.range} — required by ${describeRequirer(req)}`,
     )
+    if (req.description) lines.push(`  (${req.description})`)
     for (const r of p.rejections) {
       lines.push(`  • ${req.id} ${r.version}: ${r.reason}`)
     }

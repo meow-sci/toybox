@@ -77,7 +77,7 @@ describe('Toybox: full lifecycle', () => {
     expect(await pathExists(root, 'mods/purrTTY/TerminalThemes/dracula.toml')).toBe('file')
     expect(tb.state.mods.purrTTY!.version).toBe('1.1.0')
 
-    // --- install gatOS (optional dep on purrTTY: no forced changes) ---
+    // --- install gatOS (recommends purrTTY: no forced changes) ---
     const p3 = expectPlanned(await tb.plan({ install: [{ id: 'gatOS' }] }))
     expect(p3.changes).toEqual([
       expect.objectContaining({ kind: 'install', id: 'gatOS', version: '1.1.0' }),

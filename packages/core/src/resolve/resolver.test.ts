@@ -82,7 +82,7 @@ describe('resolve: basics', () => {
   })
 })
 
-describe('resolve: dependencies', () => {
+describe('resolve: required references', () => {
   const purrtty = mod('purrTTY', [release('1.0.1', [art()]), release('1.1.0', [art()])])
 
   it('pulls required dependencies automatically, marked autoInstalled', () => {
@@ -90,7 +90,7 @@ describe('resolve: dependencies', () => {
       purrtty,
       mod('NeedsTerm', [
         release('1.0.0', [art()], {
-          dependencies: [{ id: 'purrTTY', range: '^1.0', optional: false }],
+          required: [{ id: 'purrTTY', range: '^1.0' }],
         }),
       ]),
     ])
@@ -103,12 +103,12 @@ describe('resolve: dependencies', () => {
     }
   })
 
-  it('does NOT auto-install optional dependencies (StarMap semantics)', () => {
+  it('does NOT auto-install recommends (StarMap optional semantics)', () => {
     const idx = index([
       purrtty,
       mod('gatOS', [
         release('1.1.0', [art()], {
-          dependencies: [{ id: 'purrTTY', range: '^1.0', optional: true }],
+          recommends: [{ id: 'purrTTY', range: '^1.0' }],
         }),
       ]),
     ])
@@ -117,12 +117,12 @@ describe('resolve: dependencies', () => {
     if (r.ok) expect(r.target.purrTTY).toBeUndefined()
   })
 
-  it('warns when an installed optional dependency version mismatches', () => {
+  it('warns when an installed recommended mod version mismatches', () => {
     const idx = index([
       mod('purrTTY', [release('2.0.0', [art()])]),
       mod('gatOS', [
         release('1.1.0', [art()], {
-          dependencies: [{ id: 'purrTTY', range: '^1.0', optional: true }],
+          recommends: [{ id: 'purrTTY', range: '^1.0' }],
         }),
       ]),
     ])
@@ -144,12 +144,10 @@ describe('resolve: dependencies', () => {
       mod('Lib', [release('1.0.0', [art()]), release('2.0.0', [art()])]),
       mod('A', [
         release('1.0.0', [art()], {
-          dependencies: [{ id: 'Lib', range: '^1.0', optional: false }],
+          required: [{ id: 'Lib', range: '^1.0' }],
         }),
       ]),
-      mod('B', [
-        release('1.0.0', [art()], { dependencies: [{ id: 'Lib', range: '*', optional: false }] }),
-      ]),
+      mod('B', [release('1.0.0', [art()], { required: [{ id: 'Lib', range: '*' }] })]),
     ])
     const r = resolve(idx, baseRequest({ install: [{ id: 'B' }, { id: 'A' }] }))
     expect(r.ok).toBe(true)
@@ -161,12 +159,12 @@ describe('resolve: dependencies', () => {
       mod('Lib', [release('1.0.0', [art()]), release('2.0.0', [art()])]),
       mod('A', [
         release('1.0.0', [art()], {
-          dependencies: [{ id: 'Lib', range: '^1.0', optional: false }],
+          required: [{ id: 'Lib', range: '^1.0' }],
         }),
       ]),
       mod('B', [
         release('1.0.0', [art()], {
-          dependencies: [{ id: 'Lib', range: '^2.0', optional: false }],
+          required: [{ id: 'Lib', range: '^2.0' }],
         }),
       ]),
     ])
@@ -184,16 +182,46 @@ describe('resolve: dependencies', () => {
   it('resolves transitive chains', () => {
     const idx = index([
       mod('C', [release('1.0.0', [art()])]),
-      mod('B', [
-        release('1.0.0', [art()], { dependencies: [{ id: 'C', range: '*', optional: false }] }),
-      ]),
-      mod('A', [
-        release('1.0.0', [art()], { dependencies: [{ id: 'B', range: '*', optional: false }] }),
-      ]),
+      mod('B', [release('1.0.0', [art()], { required: [{ id: 'C', range: '*' }] })]),
+      mod('A', [release('1.0.0', [art()], { required: [{ id: 'B', range: '*' }] })]),
     ])
     const r = resolve(idx, baseRequest({ install: [{ id: 'A' }] }))
     expect(r.ok).toBe(true)
     if (r.ok) expect(Object.keys(r.target).sort()).toEqual(['A', 'B', 'C'])
+  })
+
+  it('carries the publisher description into requirement reasons and failures', () => {
+    const idx = index([
+      mod('A', [
+        release('1.0.0', [art()], {
+          required: [{ id: 'Ghost', range: '*', description: 'provides the physics solver' }],
+        }),
+      ]),
+    ])
+    const r = resolve(idx, baseRequest({ install: [{ id: 'A' }] }))
+    expect(r.ok).toBe(false)
+    if (!r.ok) {
+      // The description travels with the nested requirement into the
+      // rejection reason, so the user sees the publisher's "why".
+      expect(r.explanation).toContain('provides the physics solver')
+    }
+  })
+
+  it('a recommended mod that IS being installed still gets range-checked', () => {
+    const idx = index([
+      mod('purrTTY', [release('2.0.0', [art()]), release('1.1.0', [art()])]),
+      mod('gatOS', [release('1.1.0', [art()], { recommends: [{ id: 'purrTTY', range: '^1.0' }] })]),
+    ])
+    // Installing both fresh: resolver picks purrTTY 2.0.0 (newest), which
+    // violates gatOS's recommendation — a warning, never a failure.
+    const r = resolve(idx, baseRequest({ install: [{ id: 'gatOS' }, { id: 'purrTTY' }] }))
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.target.purrTTY!.version).toBe('2.0.0')
+      expect(r.warnings.some((w) => w.id === 'purrTTY' && w.message.includes('recommends'))).toBe(
+        true,
+      )
+    }
   })
 })
 
@@ -251,7 +279,7 @@ describe('resolve: installed set, upgrades, removals', () => {
       mod('purrTTY', [release('1.1.0', [art()])]),
       mod('NeedsTerm', [
         release('1.0.0', [art()], {
-          dependencies: [{ id: 'purrTTY', range: '*', optional: false }],
+          required: [{ id: 'purrTTY', range: '*' }],
         }),
       ]),
     ])
@@ -277,7 +305,7 @@ describe('resolve: installed set, upgrades, removals', () => {
       mod('purrTTY', [release('1.1.0', [art()])]),
       mod('NeedsTerm', [
         release('1.0.0', [art()], {
-          dependencies: [{ id: 'purrTTY', range: '*', optional: false }],
+          required: [{ id: 'purrTTY', range: '*' }],
         }),
       ]),
     ])
@@ -303,12 +331,12 @@ describe('resolve: installed set, upgrades, removals', () => {
       mod('purrTTY', [release('1.1.0', [art()])]),
       mod('X', [
         release('1.0.0', [art()], {
-          dependencies: [{ id: 'purrTTY', range: '*', optional: false }],
+          required: [{ id: 'purrTTY', range: '*' }],
         }),
       ]),
       mod('Y', [
         release('1.0.0', [art()], {
-          dependencies: [{ id: 'purrTTY', range: '*', optional: false }],
+          required: [{ id: 'purrTTY', range: '*' }],
         }),
       ]),
     ])

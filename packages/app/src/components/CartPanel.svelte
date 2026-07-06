@@ -90,6 +90,14 @@
       {#each app.catalogPlan.warnings as w (w.message)}
         <p class="warn-line">⚠ {w.message}</p>
       {/each}
+      {#each app.recommendHints(app.catalogPlan) as hint (hint.id)}
+        <p class="hint-line">
+          ◇ {hint.from} recommends <strong>{hint.id}</strong> {hint.range}{hint.description
+            ? ` — ${hint.description}`
+            : ''}
+          <button class="small" onclick={() => app.addInstall(hint.id)}>add</button>
+        </p>
+      {/each}
       <p class="muted">Download: {formatBytes(app.catalogDownloadBytes())} ({app.platform})</p>
 
       {#if app.bundling}
@@ -169,6 +177,14 @@
           <p class="warn-line">⚠ {w.message}</p>
         {/each}
       {/if}
+      {#each app.recommendHints(app.planned.resolution) as hint (hint.id)}
+        <p class="hint-line">
+          ◇ {hint.from} recommends <strong>{hint.id}</strong> {hint.range}{hint.description
+            ? ` — ${hint.description}`
+            : ''}
+          <button class="small" onclick={() => app.addInstall(hint.id)}>add</button>
+        </p>
+      {/each}
       <p class="muted">Download: {formatBytes(app.planned.plan.totalDownloadBytes)}</p>
 
       {#if needsAck}
@@ -298,6 +314,14 @@
     color: var(--warn);
     margin: 4px 0;
     font-size: 13px;
+  }
+  .hint-line {
+    color: var(--text-dim);
+    margin: 4px 0;
+    font-size: 13px;
+  }
+  .hint-line button {
+    margin-left: 6px;
   }
   .ack {
     display: flex;

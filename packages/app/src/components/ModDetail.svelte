@@ -60,9 +60,14 @@
               <td>
                 {#if rel.channel === 'prerelease'}<span class="badge warn">prerelease</span>{/if}
                 {#if rel.ksa}<span class="tag">KSA {rel.ksa}</span>{/if}
-                {#each rel.dependencies as dep (dep.id)}
-                  <span class="tag" title="{dep.optional ? 'optional' : 'required'} dependency">
-                    {dep.optional ? '◇' : '◆'} {dep.id} {dep.range}
+                {#each rel.required as ref (ref.id)}
+                  <span class="tag" title={ref.description ?? 'required'}>
+                    ◆ {ref.id} {ref.range}
+                  </span>
+                {/each}
+                {#each rel.recommends as ref (ref.id)}
+                  <span class="tag" title={ref.description ?? 'recommended'}>
+                    ◇ {ref.id} {ref.range}
                   </span>
                 {/each}
               </td>

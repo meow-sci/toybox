@@ -26,7 +26,7 @@ describe('buildModBundle: single mod (passthrough)', () => {
     expect(sha256Hex(await blobBytes(result.blob))).toBe(zips.p110.sha256)
   })
 
-  it('greenfield: optional dependencies are NOT pulled in', async () => {
+  it('greenfield: recommends are NOT pulled in', async () => {
     const { fetchFn } = buildWorld()
     const idx = await (await fetchFn(WORLD_INDEX_URL)).json()
     const result = await buildModBundle(
@@ -95,7 +95,7 @@ describe('buildModBundle: multi-mod repack', () => {
       mod('Lib', [release('1.0.0', [libArt])]),
       mod('App', [
         release('1.0.0', [appArt], {
-          dependencies: [{ id: 'Lib', range: '^1.0', optional: false }],
+          required: [{ id: 'Lib', range: '^1.0' }],
         }),
       ]),
     ])

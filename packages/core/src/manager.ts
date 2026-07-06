@@ -248,7 +248,7 @@ export class Toybox {
   /**
    * Resolve a cart into a reviewable transaction: the full dependency
    * solution, the concrete operations, and every warning (unmanaged
-   * collisions, user-modified files, optional-dep version skew).
+   * collisions, user-modified files, recommends version skew).
    */
   async plan(cart: {
     install?: CartItem[]
