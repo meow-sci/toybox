@@ -40,6 +40,13 @@ describe('parseIndex', () => {
     expect(idx.mods[0]!.releases[0]!.artifacts[0]!.platforms).toEqual(['windows', 'linux', 'macos'])
   })
 
+  it('parses the per-release readme snapshot path', () => {
+    const doc = structuredClone(validIndex)
+    ;(doc.mods[0]!.releases[0]! as Record<string, unknown>).readmePath =
+      'mods/purrtty/readmes/1.1.0.md'
+    expect(parseIndex(doc).mods[0]!.releases[0]!.readmePath).toBe('mods/purrtty/readmes/1.1.0.md')
+  })
+
   it('parses the optional mirror path', () => {
     const doc = structuredClone(validIndex)
     ;(doc.mods[0]!.releases[0]!.artifacts[0]! as Record<string, unknown>).mirror =

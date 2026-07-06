@@ -58,6 +58,11 @@ export interface CatalogRelease {
   ksa?: string
   /** Release notes markdown. */
   notes?: string
+  /**
+   * Index-relative path of the readme snapshot as of this release's
+   * registration (the vendoring convention: `mods/<slug>/readmes/<version>.md`).
+   */
+  readmePath?: string
   dependencies: CatalogDependency[]
   conflicts: CatalogConflict[]
   artifacts: CatalogArtifact[]
@@ -263,6 +268,9 @@ function parseRelease(v: unknown, what: string, modId: string): CatalogRelease {
       : {}),
     ...(optStr(v.ksa, `${what}.ksa`) !== undefined ? { ksa: v.ksa as string } : {}),
     ...(optStr(v.notes, `${what}.notes`) !== undefined ? { notes: v.notes as string } : {}),
+    ...(optStr(v.readmePath, `${what}.readmePath`) !== undefined
+      ? { readmePath: v.readmePath as string }
+      : {}),
     dependencies: deps,
     conflicts,
     artifacts,
