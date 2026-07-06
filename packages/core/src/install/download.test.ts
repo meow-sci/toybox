@@ -59,11 +59,14 @@ describe('acquireArtifact', () => {
   })
 
   it('refuses checksum mismatches and does NOT fall through', async () => {
-    const evil = makeZip({ 'M/mod.toml': 'name = "Evil"\n' })
+    // Same size as the real artifact, one byte flipped: only the digest
+    // catches it (a size difference would trip the earlier size guard).
+    const tampered = zip.bytes.slice()
+    tampered[tampered.length - 1] = tampered[tampered.length - 1]! ^ 0xff
     let directTried = false
     const fetchFn = (async (input: RequestInfo | URL) => {
       const url = String(input)
-      if (url === art.apiUrl) return blobResponse(evil.blob)
+      if (url === art.apiUrl) return blobResponse(new Blob([tampered as unknown as BlobPart]))
       directTried = true
       return blobResponse(zip.blob)
     }) as typeof fetch
@@ -88,15 +91,56 @@ describe('acquireArtifact', () => {
   })
 })
 
+describe('size self-protection', () => {
+  it('aborts a stream that exceeds the published size and does not fall through', async () => {
+    // Server sends the real zip followed by garbage padding.
+    const padded = new Uint8Array(zip.bytes.byteLength + 4096)
+    padded.set(zip.bytes)
+    padded.fill(0x41, zip.bytes.byteLength)
+    let attempts = 0
+    const fetchFn = (async () => {
+      attempts++
+      return new Response(new Blob([padded.slice() as unknown as BlobPart]))
+    }) as typeof fetch
+    await expect(acquireArtifact(art, { fetchFn })).rejects.toMatchObject({ kind: 'size' })
+    expect(attempts).toBe(1) // fatal: the direct-URL strategy was not tried
+  })
+
+  it('reports progress only up to the cap before aborting', async () => {
+    const padded = new Uint8Array(zip.bytes.byteLength * 2)
+    padded.set(zip.bytes)
+    let maxReported = 0
+    const fetchFn = (async () =>
+      new Response(new Blob([padded.slice() as unknown as BlobPart]))) as typeof fetch
+    await expect(
+      acquireArtifact(art, {
+        fetchFn,
+        onProgress: (p) => {
+          maxReported = Math.max(maxReported, p.bytesReceived)
+        },
+      }),
+    ).rejects.toMatchObject({ kind: 'size' })
+    expect(maxReported).toBeLessThanOrEqual(zip.bytes.byteLength)
+  })
+})
+
 describe('verifyLocalArtifact', () => {
+  it('quick-rejects a file of the wrong size before hashing', async () => {
+    const bigger = new Blob([zip.blob, new Blob([new Uint8Array(10)])])
+    await expect(verifyLocalArtifact(art, bigger)).rejects.toMatchObject({ kind: 'size' })
+  })
+
   it('accepts a matching user-provided file', async () => {
     const result = await verifyLocalArtifact(art, zip.blob)
     expect(result.via).toBe('local-file')
   })
 
-  it('rejects a mismatching file', async () => {
-    const wrong = makeZip({ 'other.txt': 'x' })
-    await expect(verifyLocalArtifact(art, wrong.blob)).rejects.toMatchObject({ kind: 'checksum' })
+  it('rejects a same-size file with different content (checksum)', async () => {
+    const tampered = zip.bytes.slice()
+    tampered[10] = tampered[10]! ^ 0xff
+    await expect(
+      verifyLocalArtifact(art, new Blob([tampered as unknown as BlobPart])),
+    ).rejects.toMatchObject({ kind: 'checksum' })
   })
 })
 

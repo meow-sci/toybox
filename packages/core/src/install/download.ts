@@ -32,9 +32,11 @@ export interface AcquireOptions {
   signal?: AbortSignal
 }
 
+export type DownloadErrorKind = 'cors-or-network' | 'http' | 'checksum' | 'size' | 'aborted'
+
 export class DownloadError extends Error {
-  readonly kind: 'cors-or-network' | 'http' | 'checksum' | 'aborted'
-  constructor(message: string, kind: 'cors-or-network' | 'http' | 'checksum' | 'aborted') {
+  readonly kind: DownloadErrorKind
+  constructor(message: string, kind: DownloadErrorKind) {
     super(message)
     this.name = 'DownloadError'
     this.kind = kind
@@ -79,7 +81,12 @@ export async function acquireArtifact(
     try {
       return await attempt.run()
     } catch (e) {
-      if (e instanceof DownloadError && (e.kind === 'checksum' || e.kind === 'aborted')) throw e
+      if (
+        e instanceof DownloadError &&
+        (e.kind === 'checksum' || e.kind === 'size' || e.kind === 'aborted')
+      ) {
+        throw e
+      }
       lastError = e instanceof DownloadError ? e : new DownloadError(String(e), 'cors-or-network')
     }
   }
@@ -122,9 +129,20 @@ async function fetchVerified(
   for (;;) {
     const { done, value } = await reader.read()
     if (done) break
+    received += value.byteLength
+    // Self-protection: the declared size was verified by the index pipeline
+    // (and capped by the mod's registered ceiling), so a stream running past
+    // it is tampering or corruption — abort instead of buffering unbounded
+    // data until the digest check would eventually fail.
+    if (total !== null && received > total) {
+      await reader.cancel().catch(() => {})
+      throw new DownloadError(
+        `${url} sent more data than the published size (${total} bytes) — aborting; refusing to install.`,
+        'size',
+      )
+    }
     hasher.update(value)
     parts.push(value)
-    received += value.byteLength
     opts.onProgress?.({ bytesReceived: received, totalBytes: total })
   }
   const digest = hasher.digestHex()
@@ -147,6 +165,12 @@ export async function verifyLocalArtifact(
   artifact: CatalogArtifact,
   file: Blob,
 ): Promise<AcquiredArtifact> {
+  if (artifact.size > 0 && file.size !== artifact.size) {
+    throw new DownloadError(
+      `That file is ${file.size} bytes but the published release is ${artifact.size} bytes — wrong file?`,
+      'size',
+    )
+  }
   const expected = normalizeSha256(artifact.sha256)
   const hasher = createSha256()
   const reader = (file.stream() as ReadableStream<Uint8Array>).getReader()

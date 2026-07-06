@@ -190,6 +190,7 @@ license = "MIT"
 repository = "https://github.com/meow-sci/purrtty"
 tags = ["terminal", "utility"]
 owners = ["alex-sherwin"]     # GitHub logins allowed to self-publish releases
+# max_artifact_bytes = 209715200   # opt-in ceiling for mods shipping > 50 MiB
 ```
 
 `mods/<slug>/releases/<version>.toml`:
@@ -265,8 +266,17 @@ non-org publishers merge rights. toybox-index therefore implements the
 - **Auto-merge**: when a PR touches only existing mods the author owns and
   validation is green, the workflow approves and merges it — publishers
   self-publish with zero admin involvement. New-mod registrations (a PR
-  creating `mods/<slug>/`) and any `owners` change require a review from the
-  toybox admin team (the generated CODEOWNERS routes it).
+  creating `mods/<slug>/`), any `owners` change, and any `max_artifact_bytes`
+  change require a review from the toybox admin team (the generated
+  CODEOWNERS routes it).
+- **Artifact size policy (dynamic, per registration)**: artifacts default to
+  a **50 MiB** ceiling. Mods that genuinely ship more (gatOS bundles QEMU +
+  an Alpine image: ~100–145 MB) declare `max_artifact_bytes` in their
+  mod.toml — a registration-level setting a release PR cannot raise on
+  itself (changes are admin-reviewed, like owners changes). An absolute
+  2 GiB hard cap overrides all metadata, and the CI downloader aborts any
+  stream the moment it exceeds the declared size, so neither false size
+  claims nor over-sending servers can make CI buffer unbounded data.
 
 This is Homebrew-style community operation: the small team owns the rails,
 thousands of publishers own their folders.
@@ -476,6 +486,11 @@ are the durable interface.
   only on proven content.
 - Zip-slip defense (path traversal, absolute paths, drive letters rejected);
   declared-size enforcement catches truncated/corrupt deflate streams.
+- Size caps at every layer: 50 MiB default per artifact, per-registration
+  `max_artifact_bytes` override (admin-reviewed, 2 GiB absolute maximum), and
+  hard stream aborts — both CI and the in-browser downloader cancel a
+  download the instant it exceeds the published size, and the local-file
+  fallback rejects wrong-sized files before hashing.
 - The index is data, never code; readmes are sanitized before rendering.
 - The app never asks for credentials except the optional PAT (stored only in
   `.toybox/settings.json` on the user's own disk).
@@ -501,20 +516,21 @@ are the durable interface.
 
 ## 10. Decisions log (short form)
 
-| #   | Decision                                                      | Why                                                                 |
-| --- | ------------------------------------------------------------- | ------------------------------------------------------------------- |
-| 1   | Identity = StarMap ModId = folder name                        | Loader ground truth                                                 |
-| 2   | Index owns versioning; SemVer + cargo ranges                  | StarMap is version-agnostic; proven grammar                         |
-| 3   | No `provides`/virtual modules                                 | CKAN's worst ambiguity source; no loader counterpart                |
-| 4   | Optional deps: never auto-install, validate when present      | Exact StarMap semantics + ALC sharing hazard                        |
-| 5   | Per-file sha256 in state                                      | CKAN's biggest tracking gap                                         |
-| 6   | Stage→journal→apply with roll-forward recovery                | No FS transactions in browsers                                      |
-| 7   | Verify artifact digest **before** extraction                  | Never write unverified bytes                                        |
-| 8   | CI-generated per-file manifests in the index                  | Enables adoption, verify, tamper detection                          |
-| 9   | TOML sources, compiled JSON index                             | Human-friendly authoring (KSA ecosystem is TOML), one-fetch runtime |
-| 10  | owners-file + validation-bot auto-merge; generated CODEOWNERS | GitHub can't grant merge to non-members via CODEOWNERS              |
-| 11  | GitHub API asset endpoint as primary download path            | browser_download_url is not CORS-fetchable (verified)               |
-| 12  | Local-file fallback as guaranteed install path                | Content addressing makes it equally trustworthy                     |
-| 13  | Grant KSA root (or mods dir)                                  | manifest.toml lives beside mods/ → enable/disable support           |
-| 14  | All state in `mods/.toybox/`                                  | Hard requirement: ephemeral app, durable disk                       |
-| 15  | KSA build counter normalized to 0                             | Non-monotonic per-machine noise (CKAN-KSA discipline)               |
+| #   | Decision                                                      | Why                                                                        |
+| --- | ------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| 1   | Identity = StarMap ModId = folder name                        | Loader ground truth                                                        |
+| 2   | Index owns versioning; SemVer + cargo ranges                  | StarMap is version-agnostic; proven grammar                                |
+| 3   | No `provides`/virtual modules                                 | CKAN's worst ambiguity source; no loader counterpart                       |
+| 4   | Optional deps: never auto-install, validate when present      | Exact StarMap semantics + ALC sharing hazard                               |
+| 5   | Per-file sha256 in state                                      | CKAN's biggest tracking gap                                                |
+| 6   | Stage→journal→apply with roll-forward recovery                | No FS transactions in browsers                                             |
+| 7   | Verify artifact digest **before** extraction                  | Never write unverified bytes                                               |
+| 8   | CI-generated per-file manifests in the index                  | Enables adoption, verify, tamper detection                                 |
+| 9   | TOML sources, compiled JSON index                             | Human-friendly authoring (KSA ecosystem is TOML), one-fetch runtime        |
+| 10  | owners-file + validation-bot auto-merge; generated CODEOWNERS | GitHub can't grant merge to non-members via CODEOWNERS                     |
+| 11  | GitHub API asset endpoint as primary download path            | browser_download_url is not CORS-fetchable (verified)                      |
+| 12  | Local-file fallback as guaranteed install path                | Content addressing makes it equally trustworthy                            |
+| 13  | Grant KSA root (or mods dir)                                  | manifest.toml lives beside mods/ → enable/disable support                  |
+| 14  | All state in `mods/.toybox/`                                  | Hard requirement: ephemeral app, durable disk                              |
+| 15  | KSA build counter normalized to 0                             | Non-monotonic per-machine noise (CKAN-KSA discipline)                      |
+| 16  | 50 MiB artifact cap, per-registration override, stream aborts | Self-protection for CI + players; a release PR can't raise its own ceiling |
