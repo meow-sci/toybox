@@ -42,6 +42,7 @@ export function buildWorld() {
     root: 'purrTTY',
     installAs: 'purrTTY',
     manifest: 'manifests/purrtty/1.1.0.universal.json',
+    mirror: 'mods/purrtty/artifacts/1.1.0.universal.zip',
   })
   const g110art = artifact({
     key: 'windows',
@@ -93,6 +94,7 @@ export function buildWorld() {
       case 'https://dl.test/purrTTY-1.0.1.zip':
         return new Response(p101.blob)
       case 'https://dl.test/purrTTY-1.1.0.zip':
+      case 'https://index.test/v1/mods/purrtty/artifacts/1.1.0.universal.zip':
         return new Response(p110.blob)
       case 'https://dl.test/gatOS-windows-1.1.0.zip':
         return new Response(g110.blob)

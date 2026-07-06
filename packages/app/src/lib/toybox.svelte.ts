@@ -464,6 +464,7 @@ class AppStore {
         },
         {
           manifestFor: (artifact) => this.catalogClient.fetchManifest(artifact).catch(() => null),
+          resolveIndexRelative: (path) => this.catalogClient.resolveIndexRelative(path),
           onEvent: (e) => {
             switch (e.type) {
               case 'phase':

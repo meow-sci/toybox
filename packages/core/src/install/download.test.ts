@@ -91,6 +91,57 @@ describe('acquireArtifact', () => {
   })
 })
 
+describe('mirror strategy', () => {
+  it('tries the Pages mirror FIRST and never touches GitHub when it works', async () => {
+    const calls: string[] = []
+    const fetchFn = (async (input: RequestInfo | URL) => {
+      calls.push(String(input))
+      return blobResponse(zip.blob)
+    }) as typeof fetch
+    const result = await acquireArtifact(art, {
+      fetchFn,
+      mirrorUrl: 'https://index.test/v1/mods/m/artifacts/1.0.0.universal.zip',
+    })
+    expect(result.via).toBe('mirror')
+    expect(calls).toEqual(['https://index.test/v1/mods/m/artifacts/1.0.0.universal.zip'])
+  })
+
+  it('falls back to the GitHub API path when the mirror 404s', async () => {
+    const fetchFn = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('index.test')) return new Response('gone', { status: 404 })
+      if (url === art.apiUrl) return blobResponse(zip.blob)
+      return new Response('no', { status: 404 })
+    }) as typeof fetch
+    const result = await acquireArtifact(art, {
+      fetchFn,
+      mirrorUrl: 'https://index.test/v1/mods/m/artifacts/1.0.0.universal.zip',
+    })
+    expect(result.via).toBe('github-api')
+  })
+
+  it('a tampered mirror is fatal, not a fall-through (fail closed)', async () => {
+    const tampered = zip.bytes.slice()
+    tampered[0] = tampered[0]! ^ 0xff
+    let githubTried = false
+    const fetchFn = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('index.test')) {
+        return blobResponse(new Blob([tampered as unknown as BlobPart]))
+      }
+      githubTried = true
+      return blobResponse(zip.blob)
+    }) as typeof fetch
+    await expect(
+      acquireArtifact(art, {
+        fetchFn,
+        mirrorUrl: 'https://index.test/v1/mods/m/artifacts/1.0.0.universal.zip',
+      }),
+    ).rejects.toMatchObject({ kind: 'checksum' })
+    expect(githubTried).toBe(false)
+  })
+})
+
 describe('size self-protection', () => {
   it('aborts a stream that exceeds the published size and does not fall through', async () => {
     // Server sends the real zip followed by garbage padding.

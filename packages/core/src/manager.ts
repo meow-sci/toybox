@@ -352,6 +352,9 @@ export class Toybox {
     try {
       return await acquireArtifact(artifact, {
         fetchFn: this.fetchFn,
+        ...(artifact.mirror
+          ? { mirrorUrl: this.client.resolveIndexRelative(artifact.mirror) }
+          : {}),
         ...(this.settingsCache.githubToken !== undefined
           ? { githubToken: this.settingsCache.githubToken }
           : {}),

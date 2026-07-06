@@ -40,6 +40,15 @@ describe('parseIndex', () => {
     expect(idx.mods[0]!.releases[0]!.artifacts[0]!.platforms).toEqual(['windows', 'linux', 'macos'])
   })
 
+  it('parses the optional mirror path', () => {
+    const doc = structuredClone(validIndex)
+    ;(doc.mods[0]!.releases[0]!.artifacts[0]! as Record<string, unknown>).mirror =
+      'mods/purrtty/artifacts/1.1.0.universal.zip'
+    expect(parseIndex(doc).mods[0]!.releases[0]!.artifacts[0]!.mirror).toBe(
+      'mods/purrtty/artifacts/1.1.0.universal.zip',
+    )
+  })
+
   it('accepts sha256 with the sha256: prefix (GitHub digest format)', () => {
     const doc = structuredClone(validIndex)
     doc.mods[0]!.releases[0]!.artifacts[0]!.sha256 = `sha256:${'a'.repeat(64)}`

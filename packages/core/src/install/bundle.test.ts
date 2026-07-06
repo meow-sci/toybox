@@ -159,7 +159,9 @@ describe('buildModBundle: failure modes', () => {
     const idx = await (await world.fetchFn(WORLD_INDEX_URL)).json()
     const fetchFn = (async (input: RequestInfo | URL) => {
       const url = String(input)
-      if (url.startsWith('https://dl.test/')) throw new TypeError('Failed to fetch')
+      if (url.startsWith('https://dl.test/') || url.includes('/artifacts/')) {
+        throw new TypeError('Failed to fetch')
+      }
       return world.fetchFn(input)
     }) as typeof fetch
     const zip = makeZip(PURRTTY_1_1_0)

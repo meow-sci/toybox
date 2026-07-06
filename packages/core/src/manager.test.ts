@@ -132,10 +132,13 @@ describe('Toybox: full lifecycle', () => {
     await (await fileAtPath(root, 'mods/.keep', { create: true })).write('')
     const world = buildWorld()
     const zip = makeZip(PURRTTY_1_1_0)
-    // Network: index + manifests work, artifact download fails (CORS-like).
+    // Network: index + manifests work, every artifact byte source fails
+    // (mirror included — e.g. an offline Pages deploy or an old index).
     const fetchFn = (async (input: RequestInfo | URL) => {
       const url = String(input)
-      if (url.startsWith('https://dl.test/')) throw new TypeError('Failed to fetch')
+      if (url.startsWith('https://dl.test/') || url.includes('/artifacts/')) {
+        throw new TypeError('Failed to fetch')
+      }
       return world.fetchFn(input)
     }) as typeof fetch
     const tb = new Toybox(root, { fetchFn, indexUrl: INDEX_URL, platform: 'windows' })
