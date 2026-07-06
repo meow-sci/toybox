@@ -33,7 +33,12 @@ export {
   ALL_PLATFORMS,
 } from './catalog/types.ts'
 export { IndexClient, DEFAULT_INDEX_URL } from './catalog/client.ts'
-export { searchMods, eligibleReleases, artifactForPlatform } from './catalog/select.ts'
+export {
+  searchMods,
+  eligibleReleases,
+  artifactForPlatform,
+  modIndexFolder,
+} from './catalog/select.ts'
 
 export type { ToyDir, ToyFile, ToyEntry, ToyWritable } from './fs/types.ts'
 export {

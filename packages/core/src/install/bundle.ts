@@ -45,6 +45,12 @@ export interface BundleOptions {
   githubToken?: string
   /** Fetch a release artifact's file manifest for per-file verification. */
   manifestFor?: (artifact: CatalogArtifact) => Promise<ArtifactManifest | null>
+  /**
+   * Resolve an index-relative path (artifact.mirror) to an absolute URL —
+   * typically IndexClient.resolveIndexRelative. Enables the same-origin
+   * Pages-mirror download path.
+   */
+  resolveIndexRelative?: (path: string) => string
   onEvent?: (e: BundleEvent) => void
   signal?: AbortSignal
 }
@@ -118,6 +124,9 @@ export async function buildModBundle(
     try {
       return await acquireArtifact(artifact, {
         ...(opts.fetchFn ? { fetchFn: opts.fetchFn } : {}),
+        ...(artifact.mirror && opts.resolveIndexRelative
+          ? { mirrorUrl: opts.resolveIndexRelative(artifact.mirror) }
+          : {}),
         ...(opts.githubToken !== undefined ? { githubToken: opts.githubToken } : {}),
         onProgress: (progress) => opts.onEvent?.({ type: 'download', modId, progress }),
         ...(opts.signal ? { signal: opts.signal } : {}),

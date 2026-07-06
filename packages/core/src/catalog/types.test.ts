@@ -40,6 +40,15 @@ describe('parseIndex', () => {
     expect(idx.mods[0]!.releases[0]!.artifacts[0]!.platforms).toEqual(['windows', 'linux', 'macos'])
   })
 
+  it('parses the optional mirror path', () => {
+    const doc = structuredClone(validIndex)
+    ;(doc.mods[0]!.releases[0]!.artifacts[0]! as Record<string, unknown>).mirror =
+      'mods/purrtty/artifacts/1.1.0.universal.zip'
+    expect(parseIndex(doc).mods[0]!.releases[0]!.artifacts[0]!.mirror).toBe(
+      'mods/purrtty/artifacts/1.1.0.universal.zip',
+    )
+  })
+
   it('accepts sha256 with the sha256: prefix (GitHub digest format)', () => {
     const doc = structuredClone(validIndex)
     doc.mods[0]!.releases[0]!.artifacts[0]!.sha256 = `sha256:${'a'.repeat(64)}`
@@ -72,6 +81,24 @@ describe('parseIndex', () => {
     const bad = structuredClone(validIndex)
     bad.mods[0]!.id = '../escape'
     expect(() => parseIndex(bad)).toThrow(/bad mod id/)
+  })
+})
+
+describe('modIndexFolder', () => {
+  it('derives the mod folder from readmePath, manifest, or mirror', async () => {
+    const { modIndexFolder } = await import('./select.ts')
+    const base = parseIndex(validIndex).mods[0]!
+    expect(modIndexFolder(base)).toBeNull() // no convention paths declared
+
+    expect(modIndexFolder({ ...base, readmePath: 'mods/purrtty/readme.md' })).toBe('mods/purrtty/')
+
+    const withManifest = structuredClone(base)
+    withManifest.releases[0]!.artifacts[0]!.manifest = 'mods/purrtty/manifests/1.1.0.universal.json'
+    expect(modIndexFolder(withManifest)).toBe('mods/purrtty/')
+
+    const withMirror = structuredClone(base)
+    withMirror.releases[0]!.artifacts[0]!.mirror = 'mods/purrtty/artifacts/1.1.0.universal.zip'
+    expect(modIndexFolder(withMirror)).toBe('mods/purrtty/')
   })
 })
 

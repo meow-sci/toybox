@@ -43,6 +43,10 @@
           · <a href={mod.homepage} target="_blank" rel="noopener noreferrer">homepage</a>
         {/if}
         · maintained by {mod.owners.map((o) => `@${o}`).join(', ')}
+        {#if app.modBrowseUrl(mod)}
+          · <a class="quiet" href={app.modBrowseUrl(mod)} target="_blank" rel="noopener noreferrer"
+            >index</a>
+        {/if}
       </div>
 
       <h3>Releases</h3>
@@ -133,6 +137,12 @@
     flex: 1;
   }
   .links a {
+    color: var(--accent);
+  }
+  .links a.quiet {
+    color: var(--text-dim);
+  }
+  .links a.quiet:hover {
     color: var(--accent);
   }
   .releases {

@@ -28,6 +28,13 @@ export interface DownloadProgress {
 export interface AcquireOptions {
   fetchFn?: typeof fetch
   githubToken?: string
+  /**
+   * Absolute URL of the artifact's Pages mirror (the caller resolves the
+   * index-relative `artifact.mirror` against the index base). Tried FIRST:
+   * it is same-origin with the app in the standard deployment, so it works
+   * everywhere — including browsers where the GitHub paths fail CORS.
+   */
+  mirrorUrl?: string
   onProgress?: (p: DownloadProgress) => void
   signal?: AbortSignal
 }
@@ -48,19 +55,30 @@ export interface AcquiredArtifact {
   blob: Blob
   sha256: string
   /** Which strategy produced it, for diagnostics/UI. */
-  via: 'github-api' | 'direct' | 'local-file'
+  via: 'mirror' | 'github-api' | 'direct' | 'local-file'
 }
 
 /**
- * Try to acquire an artifact over the network: GitHub API endpoint first
- * (when we have one), then a direct fetch. Throws DownloadError when no
- * network path works — callers then offer the local-file fallback.
+ * Try to acquire an artifact over the network: the Pages mirror first (the
+ * only path guaranteed browser-fetchable), then the GitHub API endpoint,
+ * then a direct fetch. Throws DownloadError when no network path works —
+ * callers then offer the local-file fallback.
  */
 export async function acquireArtifact(
   artifact: CatalogArtifact,
   opts: AcquireOptions = {},
 ): Promise<AcquiredArtifact> {
-  const attempts: { via: 'github-api' | 'direct'; run: () => Promise<AcquiredArtifact> }[] = []
+  const attempts: {
+    via: 'mirror' | 'github-api' | 'direct'
+    run: () => Promise<AcquiredArtifact>
+  }[] = []
+  if (opts.mirrorUrl) {
+    const mirrorUrl = opts.mirrorUrl
+    attempts.push({
+      via: 'mirror',
+      run: () => fetchVerified(artifact, mirrorUrl, opts, 'mirror', {}),
+    })
+  }
   if (artifact.apiUrl) {
     attempts.push({
       via: 'github-api',
@@ -97,7 +115,7 @@ async function fetchVerified(
   artifact: CatalogArtifact,
   url: string,
   opts: AcquireOptions,
-  via: 'github-api' | 'direct',
+  via: 'mirror' | 'github-api' | 'direct',
   headers: Record<string, string>,
 ): Promise<AcquiredArtifact> {
   const fetchFn =

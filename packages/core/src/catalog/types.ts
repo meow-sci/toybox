@@ -85,8 +85,14 @@ export interface CatalogArtifact {
   key: string
   platforms: Platform[]
   url: string
-  /** GitHub API asset URL — the CORS-viable download path for release assets. */
+  /** GitHub API asset URL — a fallback download path for release assets. */
   apiUrl?: string
+  /**
+   * Index-relative path of the artifact's mirrored bytes on the published
+   * Pages site (same-origin for the app — the preferred, always-CORS-safe
+   * download path). Present for a mod's newest mirror_versions releases.
+   */
+  mirror?: string
   size: number
   sha256: string
   /** Top-level directory inside the zip that is the mod folder. */
@@ -290,6 +296,7 @@ function parseArtifact(v: unknown, what: string, modId: string): CatalogArtifact
     platforms: validatePlatforms(v.platforms, `${what}.platforms`),
     url,
     ...(optStr(v.apiUrl, `${what}.apiUrl`) !== undefined ? { apiUrl: v.apiUrl as string } : {}),
+    ...(optStr(v.mirror, `${what}.mirror`) !== undefined ? { mirror: v.mirror as string } : {}),
     size: num(v.size, `${what}.size`),
     sha256: validateSha256(v.sha256, `${what}.sha256`),
     root: str(v.root ?? modId, `${what}.root`),
